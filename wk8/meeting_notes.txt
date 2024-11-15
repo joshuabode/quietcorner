@@ -1,0 +1,31 @@
+
+
+go ahead with the study spaces heat map/crowd level idea
+can potentially have a chatbot/forum per study space to link up people who are studying same subject to study tgt
+based on a student's timetable, make suggestions on where the student can potentially go to study (rank the ideas based on dist, occupancy)
+let the student add the timetable in .ics format, then add to the calendar their own study times etc.
+user profile can have a field for major taken, to keep track of how many of each major in each study space at that point in time (to help w the ranking based on no of student studying a similar subject)
+nearest food joints to the student (eg price, opening/closing time, menu)
+rely on user input + "data" from card readers
+
+how do we want to keep track
+
+
+basic features+extra additions if we have time and funding
+
+
+poster:
+- name
+- logo
+- catchphrase
+- aesthetics!
+
+
+from last week:
+have a predictive chart per study space to show est. crowd levels
+show the diff facilities available in each study space eg. com terminals, booking rooms etc
+
+
+
+Aim:
+Students who come to uni to study by themselves need to find a place to study. However, such places can be difficult to find especially
