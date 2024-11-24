@@ -2,13 +2,13 @@
 1. Occupancy information and heatmap (GET request)
 2. Report crowd level (POST request)
 3. Integrate user reports (Algorithm and PUT request)
-4. Calander and study time feature (GET request)
+4. Calendar and study time feature (GET request)
 5. Save user study time blocks (PUT requset)
 
 ============ Secondary Features ============
 6. Location suggestion
 7. Find a study buddy pairing (Algorithm)
-8. .ics calander upload feature (PUT request)
+8. .ics calendar upload feature (PUT request)
 9. Study buddy DM chat feature
 
 ============== Extra Features ==============
