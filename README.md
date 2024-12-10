@@ -19,4 +19,9 @@ Front end:
 cd into the quietcorner folder and run `npm run dev`.
 
 Back end:
+You need to install flask-mysqldb which involves installing dependencies from mysql client. Follow the instructions here: https://github.com/PyMySQL/mysqlclient#install
+
 After installating Flask (v3.1.0), execute `flask run` to start the webapp.
+
+Server:
+`mysql.server start`
