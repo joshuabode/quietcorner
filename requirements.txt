@@ -1,7 +1,3 @@
 Flask == 3.1.0
-<<<<<<< HEAD
 Flask-Session == 0.8.0
-=======
 Flask-MySQL == 1.6.0
-
->>>>>>> 54eac53f21c4a8e8acc6f204e9d4e8a53a58f281
