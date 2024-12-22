@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from 'react'
+import {useState, useEffect, useRef, FormEvent, ChangeEvent} from 'react'
 import { addMinutes, format, parse, startOfDay } from 'date-fns'
 import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen } from 'lucide-react'
 
@@ -25,6 +25,8 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { eventNames } from 'process'
+import { read } from 'fs'
 
 const locations = [
     {
@@ -50,13 +52,13 @@ const locations = [
     },
 ]
 
-const courses = ['COMP12111', 'COMP11120', 'COMP15111', 'COMP16321']
 
 type TimeBlock = {
-    start: Date
-    end: Date
-    course: string
+    start: Date | null
+    end: Date | null
+    title: string
     location: string
+    timetabled: boolean
 }
 
 type AppSidebarProps = {
@@ -65,15 +67,22 @@ type AppSidebarProps = {
 
 
 export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
-    const [locations, setLocations] = React.useState<Location[]>([])
-    const [date, setDate] = React.useState<Date | undefined>(new Date())
-    const [timeBlocks, setTimeBlocks] = React.useState<TimeBlock[]>([])
-    const [studyMatches, setStudyMatches] = React.useState<any[]>([])
+    const [locations, setLocations] = useState<Location[]>([])
+    const [date, setDate] = useState<Date | undefined>(new Date())
+    const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
+    const [studyMatches, setStudyMatches] = useState<any[]>([])
+    const [icsFile, setIcsFile] = useState("")
 
-    React.useEffect(() => {
+    const icsInput = useRef<HTMLInputElement | null>(null)
+
+    useEffect(() => {
         fetchLocations()
         fetchCrowdLevels()
     }, [])
+
+    useEffect(() => {console.log("REMOUNT")} //send icsFile to server for database storage
+    , [icsFile, date])
+
 
     const fetchLocations = async () => {
         try {
@@ -108,7 +117,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         }
     }
 
-    const handleReportSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
         try {
@@ -134,7 +143,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         }
     }
 
-    const handleStudyRequest = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleStudyRequest = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
         try {
@@ -175,23 +184,82 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         }
     }
 
-    const addTimeBlock = () => {
-        const newBlock: TimeBlock = {
-            start: parse('12:00', 'HH:mm', new Date()),
-            end: parse('13:00', 'HH:mm', new Date()),
-            course: courses[0],
-            location: locations[0].name,
+    const addCustomTimeBlock = () => {}
+
+    // const addCustomTimeBlock = (start, end, title, location) => {
+    //     const block: TimeBlock = {start: start, end: end, title: title, location:location, timetabled: false}
+    //     setTimeBlocks(timeBlocks.concat([block]))
+    //     const newBlock: TimeBlock = {
+    //         start: parse('12:00', 'HH:mm', new Date()),
+    //         end: parse('13:00', 'HH:mm', new Date()),
+    //         course: courses[0],
+    //         location: locations[0].name,
+    //     }
+    //     setTimeBlocks([...timeBlocks, newBlock])
+    // }
+
+    const addTimeBlocks = (icsData: string) => {
+        console.log(icsData.split("\n"))
+        const newBlocks: TimeBlock[] = []
+        let block: TimeBlock = {start: new Date(), end: new Date(), title: "", location: "", timetabled: true}
+        for (const line of icsData.split("\n")) {
+            if (line.startsWith("BEGIN:VEVENT")) {
+                console.log('event start')
+                block = {start: null, end: null, title: "", location: "", timetabled: true}
+            } else if (line.startsWith("DTSTART:")) {
+                let str = line.slice("DTSTART:".length)
+                str = str.slice(0,4) + '-' 
+                            + str.slice(4,6) + '-' 
+                            + str.slice(6,11) + ':'
+                            + str.slice(11, 13) + ':'
+                            + str.slice(13, 15) + '.000Z'
+                block.start = new Date(str)
+            } else if (line.startsWith("DTEND:")) {
+                let str = line.slice("DTEND:".length)
+                str = str.slice(0,4) + '-' 
+                            + str.slice(4,6) + '-' 
+                            + str.slice(6,11) + ':'
+                            + str.slice(11, 13) + ':'
+                            + str.slice(13, 15) + '.000Z'
+                block.end = new Date(str)
+            } else if (line.startsWith("SUMMARY:")) {
+                block.title = line.slice("SUMMARY:".length)
+            } else if (line.startsWith("LOCATION:")) {
+                let str = line.slice("LOCATION:".length)
+                block.location = str
+            } else if (line.startsWith("END:VEVENT")) {
+                console.log(block)
+                newBlocks.push(block)
+            }
         }
-        setTimeBlocks([...timeBlocks, newBlock])
+            
+        setTimeBlocks(timeBlocks.concat(newBlocks))
     }
 
-    const handleIcsUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (file) {
-            console.log(`Uploaded file: ${file.name}`)
-            // Implement ICS parsing logic here
+    const handleIcsClick = () => {
+        if (icsInput.current)
+            icsInput.current.click()
+        else
+            return
+    }
+
+    const handleIcsFile = (event: ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files) {
+            const file = event.target.files[0]
+            const reader = new FileReader()
+            reader.readAsText(file)
+            reader.onloadend = () => {
+                if (typeof reader.result === "string") {
+                    setIcsFile(reader.result)
+                    console.log("an attempt was made")
+                    addTimeBlocks(reader.result)
+                    console.log("Function returns")
+                }
+
+            }
         }
     }
+
 
     const handleLocationClick = (location: Location) => {
         onLocationSelect(location.name, [location.latitude, location.longitude])
@@ -344,23 +412,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 <Label>Timetable for {date?.toDateString()}</Label>
                                                 <ScrollArea className="h-[300px] mt-2 border rounded-md">
                                                     <div className="relative w-full" style={{ height: '1440px' }}>
-                                                        {timeBlocks.map((block, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="absolute left-0 right-0 bg-blue-200 rounded p-2 text-xs"
-                                                                style={{
-                                                                    top: `${(block.start.getHours() * 60 + block.start.getMinutes()) / 1440 * 100}%`,
-                                                                    height: `${((block.end.getHours() - block.start.getHours()) * 60 + (block.end.getMinutes() - block.start.getMinutes())) / 1440 * 100}%`,
-                                                                }}
-                                                            >
-                                                                <strong>{block.course}</strong>
-                                                                <br />
-                                                                {block.location}
-                                                                <br />
-                                                                {format(block.start, 'HH:mm')} - {format(block.end, 'HH:mm')}
-                                                            </div>
-                                                        ))}
-                                                        {Array.from({ length: 24 }).map((_, i) => (
+                                                    {Array.from({ length: 24 }).map((_, i) => (
                                                             <div
                                                                 key={i}
                                                                 className="absolute left-0 right-0 border-t border-gray-200 text-xs text-gray-500 pl-1"
@@ -369,26 +421,47 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                                 {`${i.toString().padStart(2, '0')}:00`}
                                                             </div>
                                                         ))}
+                                                        {timeBlocks.map((block, index) => { 
+                                                            if (block.start?.toDateString() === date?.toDateString()) {
+                                                                return(
+                                                                    <div
+                                                                        id={index}
+                                                                        className="absolute left-0 right-0 bg-blue-200 rounded p-2 text-xs"
+                                                                        style={{
+                                                                            top: `${(block.start.getHours() * 60 + block.start.getMinutes()) / 1440 * 100}%`,
+                                                                            height: `${((block.end.getHours() - block.start.getHours()) * 60 + (block.end.getMinutes() - block.start.getMinutes())) / 1440 * 100}%`,
+                                                                        }}
+                                                                    >
+                                                                        <strong>{block.title}</strong>
+                                                                        <br />
+                                                                        {block.location}
+                                                                        <br />
+                                                                        {format(block.start, 'HH:mm')} - {format(block.end, 'HH:mm')}
+                                                                    </div>
+                                                            )}
+                                                            })}
+                                                
                                                     </div>
                                                 </ScrollArea>
                                             </div>
                                             <div className="flex justify-between mt-4">
-                                                <Button onClick={addTimeBlock}>
+                                                <Button onClick={addCustomTimeBlock}>
                                                     <Plus className="mr-2 h-4 w-4" /> Add Time Block
                                                 </Button>
                                                 <div>
-                                                    <input
+                                                    <form action="">
+                                                         <input
                                                         type="file"
                                                         id="ics-upload"
                                                         accept=".ics"
                                                         className="sr-only"
-                                                        onChange={handleIcsUpload}
+                                                        ref={icsInput}
+                                                        onChange={handleIcsFile}
                                                     />
-                                                    <Label htmlFor="ics-upload" className="cursor-pointer">
-                                                        <Button as="span">
-                                                            <Upload className="mr-2 h-4 w-4" /> Upload .ics
-                                                        </Button>
-                                                    </Label>
+                                                    </form>
+                                                    <Button onClick={handleIcsClick}>
+                                                        <Upload className="mr-2 h-4 w-4" /> Upload .ics
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
@@ -449,5 +522,4 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 </Tabs>
             </SidebarContent>
         </Sidebar>
-    )
-}
+    )};
