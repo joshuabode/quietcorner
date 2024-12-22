@@ -2,6 +2,7 @@
   "name": "quietcorner",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:5000/",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -28,6 +29,8 @@
     "react": "19.0.0-rc-66855b96-20241106",
     "react-day-picker": "^8.10.1",
     "react-dom": "19.0.0-rc-66855b96-20241106",
+    "react-router": "^7.0.2",
+    "react-router-dom": "^7.0.2",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
   },

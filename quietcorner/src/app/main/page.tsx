@@ -27,6 +27,31 @@ interface Location {
 }
 
 function MapLayout() {
+    const authenticate = async () => {
+        let authEndpoint = window.location.href.replace('http://localhost:3000/api/login', 'http://localhost:5000/api/login');
+        console.log(authEndpoint)
+        try {
+            const authenticationResponse = await fetch('http://localhost:5000/api/login', {
+                method: 'GET',
+                credentials: 'include', // Include cookies for cross-origin requests
+            });
+            const data = await authenticationResponse.json();
+            console.log(data);
+
+            if (!authenticationResponse.ok) {
+                throw new Error('Failed to connect to authenticator');
+            }
+            const authenticationData = await authenticationResponse.json();
+            console.log(authenticationData)
+            setAuthenticated(authenticationData.auth)
+            setAuthUrl(authenticationData.url)
+        } catch (error) {
+            console.error('UOM_FETCH_ERROR:', authEndpoint, error)
+        }
+    }
+
+    const [authenticated, setAuthenticated] = useState(false);
+    const [nextAuthUrl, setAuthUrl] = useState('/main')
     const [locations, setLocations] = useState<Location[]>([]);
     const [map, setMap] = useState<Map | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
@@ -34,8 +59,14 @@ function MapLayout() {
     const popupElement = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        fetchLocations();
+        authenticate();
     }, []);
+
+    useEffect(() => {
+        if (authenticated) {
+            fetchLocations();
+        }
+    }, [authenticated]);
 
     useEffect(() => {
         if (mapElement.current && locations.length > 0) {
@@ -145,41 +176,54 @@ function MapLayout() {
         }
     };
 
-    return (
-        <div>
-            <SidebarProvider
-                style={
-                    {
-                        "--sidebar-width": "400px",
-                    } as React.CSSProperties
-                }
-            >
-                <AppSidebar onLocationSelect={handleLocationSelect} />
-                <SidebarInset>
-                    <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
-                        <div ref={popupElement} className="ol-popup">
-                            {selectedLocation && (
-                                <div className="bg-white p-2 rounded shadow">
-                                    <h3 className="font-bold">{selectedLocation}</h3>
-                                    <p>Crowd Level: {
-                                        (() => {
-                                            const location = locations.find(l => l.name === selectedLocation);
-                                            if (location) {
-                                                if (location.population > 500) return 'High';
-                                                if (location.population < 200) return 'Low';
-                                                return 'Medium';
-                                            }
-                                            return 'Unknown';
-                                        })()
-                                    }</p>
+    const displayHome = () => {
+        if (authenticated) {
+            return (
+                <div>
+                    <SidebarProvider
+                        style={
+                            {
+                                "--sidebar-width": "400px",
+                            } as React.CSSProperties
+                        }
+                    >
+                        <AppSidebar onLocationSelect={handleLocationSelect} />
+                        <SidebarInset>
+                            <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
+                                <div ref={popupElement} className="ol-popup">
+                                    {selectedLocation && (
+                                        <div className="bg-white p-2 rounded shadow">
+                                            <h3 className="font-bold">{selectedLocation}</h3>
+                                            <p>Crowd Level: {
+                                                (() => {
+                                                    const location = locations.find(l => l.name === selectedLocation);
+                                                    if (location) {
+                                                        if (location.population > 500) return 'High';
+                                                        if (location.population < 200) return 'Low';
+                                                        return 'Medium';
+                                                    }
+                                                    return 'Unknown';
+                                                })()
+                                            }</p>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </SidebarInset>
-            </SidebarProvider>
-        </div>
-    );
+                            </div>
+                        </SidebarInset>
+                    </SidebarProvider>
+                </div>
+            );
+        } else {
+            return (
+                window.location.href = nextAuthUrl
+            );
+        }
+    }
+    
+    useEffect(() => {
+        displayHome();
+    }, [authenticated, nextAuthUrl]);
+    
 }
 
 export default MapLayout;
