@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import Modal from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
     Sidebar,
@@ -72,8 +73,13 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
     const [studyMatches, setStudyMatches] = useState<any[]>([])
     const [icsFile, setIcsFile] = useState("")
+    const [modal, setModal] = useState(false);
 
     const icsInput = useRef<HTMLInputElement | null>(null)
+    const studyStart = useRef<HTMLInputElement | null>(null)
+    const studyEnd = useRef<HTMLInputElement | null>(null)
+    const studyTitle = useRef<HTMLInputElement | null>(null)
+    const studyLocation = useRef<HTMLSelectElement | null>(null)
 
     useEffect(() => {
         fetchLocations()
@@ -184,19 +190,20 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         }
     }
 
-    const addCustomTimeBlock = () => {}
+        
+    const addCustomTimeBlock = () => {
+        const newBlock: TimeBlock = {
 
-    // const addCustomTimeBlock = (start, end, title, location) => {
-    //     const block: TimeBlock = {start: start, end: end, title: title, location:location, timetabled: false}
-    //     setTimeBlocks(timeBlocks.concat([block]))
-    //     const newBlock: TimeBlock = {
-    //         start: parse('12:00', 'HH:mm', new Date()),
-    //         end: parse('13:00', 'HH:mm', new Date()),
-    //         course: courses[0],
-    //         location: locations[0].name,
-    //     }
-    //     setTimeBlocks([...timeBlocks, newBlock])
-    // }
+            start: new Date(studyStart.current?.value ?? ""),
+            end: new Date(studyEnd.current?.value ?? ""),
+            title: studyTitle.current?.value ?? "",
+            location: studyLocation.current?.value ?? "",
+            timetabled: false
+
+        }
+        setTimeBlocks([...timeBlocks, newBlock])
+        setModal(false)
+    }
 
     const addTimeBlocks = (icsData: string) => {
         console.log(icsData.split("\n"))
@@ -426,7 +433,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                                 return(
                                                                     <div
                                                                         id={index}
-                                                                        className="absolute left-0 right-0 bg-blue-200 rounded p-2 text-xs"
+                                                                        className={`absolute left-0 right-0 ${block.timetabled ? 'bg-blue-600/30' : 'bg-red-500/30'} rounded p-2 text-xs`}
                                                                         style={{
                                                                             top: `${(block.start.getHours() * 60 + block.start.getMinutes()) / 1440 * 100}%`,
                                                                             height: `${((block.end.getHours() - block.start.getHours()) * 60 + (block.end.getMinutes() - block.start.getMinutes())) / 1440 * 100}%`,
@@ -445,7 +452,55 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 </ScrollArea>
                                             </div>
                                             <div className="flex justify-between mt-4">
-                                                <Button onClick={addCustomTimeBlock}>
+                                            
+                                                <Modal openModal={modal} closeModal={() => setModal(false)}>
+                                                    
+                                                    <div>
+                                                    <Label htmlFor="start-time">
+                                                        Start:
+                                                    </Label>
+
+                                                    <Input
+                                                    type="datetime-local"
+                                                    id="start-time"
+                                                    name="start"
+                                                    ref={studyStart}
+                                                    />  
+                                                    </div>
+                                                    <div>
+                                                    <Label htmlFor="end-time">
+                                                        Finish:
+                                                    </Label>
+                                                    <Input
+                                                    type="datetime-local"
+                                                    id="end-time"
+                                                    name="end"
+                                                    ref={studyEnd}
+                                                    />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="title">
+                                                            Label:
+                                                        </Label>
+                                                        <Input type="text"
+                                                        ref={studyTitle}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="location">
+                                                            Location:
+                                                        </Label>
+                                        
+                                                        <select name="location" ref={studyLocation} className='border border-gray-300 text-gray-900 rounded-lg'>
+                                                            <option value="Main Library">Main Library</option>
+                                                            <option value="Stopford Building Library">Stopford Building Library</option>
+                                                            <option value="Alan Gilbert Learning Commons">Alan Gilbert Learning Commons</option>
+
+                                                        </select>
+                                                    </div>
+                                                    <Button onClick={addCustomTimeBlock}>Add</Button>   
+                                                </Modal>
+                                                <Button onClick={() => setModal(true)}>
                                                     <Plus className="mr-2 h-4 w-4" /> Add Time Block
                                                 </Button>
                                                 <div>
