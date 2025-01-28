@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_DB'] = 'campus_map'
+app.config['MYSQL_DB'] = 'campus_maps'
 
 mysql = MySQL(app)
 
@@ -19,7 +19,7 @@ def login_form():
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
     cur = mysql.connection.cursor()
-    cur.execute('''SELECT id, name, latitude, longitude, opening_hours, facilities FROM locations''')
+    cur.execute('''SELECT building_id, name, latitude, longitude, opening_hours, facilities, max_capacity FROM building''')
     locations = cur.fetchall()
     cur.close()
 
@@ -29,7 +29,8 @@ def get_locations():
         'latitude': float(loc[2]),
         'longitude': float(loc[3]),
         'opening_hours': loc[4],
-        'facilities': loc[5].split(', ')
+        'facilities': loc[5],
+        'max_capacity': loc[6].split(', ')
     } for loc in locations])
 
 
