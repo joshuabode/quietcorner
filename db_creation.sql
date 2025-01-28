@@ -36,3 +36,7 @@ CREATE TABLE building (
     created_at TIMESTAMP
 );
 
+-- latitude, longitude, opening hours within the buiilding table
+-- there should only be one primary KEY
+-- card reader boolean in buildings table
+-- start/end of session tables don't update occupancy for buildings with card readers
