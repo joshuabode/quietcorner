@@ -84,9 +84,12 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     useEffect(() => {
         fetchLocations()
         fetchCrowdLevels()
+        restoreCustomTimeBlocks()
     }, [])
 
-    useEffect(() => {console.log("REMOUNT")} //send icsFile to server for database storage
+    useEffect(() => {
+        //send icsFile to server for database storage
+    } 
     , [icsFile, date])
 
 
@@ -191,27 +194,51 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     }
 
         
-    const addCustomTimeBlock = () => {
-        const newBlock: TimeBlock = {
-
+    const addCustomTimeBlock = (block : TimeBlock) => {
+        // If the block argument is passed, then add that as the block.
+        // Otherwise, create a block from the modal form
+        let isBlock = Boolean(block.start && block.end)
+        const newBlock: TimeBlock = isBlock ? block :
+        {
             start: new Date(studyStart.current?.value ?? ""),
             end: new Date(studyEnd.current?.value ?? ""),
             title: studyTitle.current?.value ?? "",
             location: studyLocation.current?.value ?? "",
             timetabled: false
-
         }
-        setTimeBlocks([...timeBlocks, newBlock])
+        setTimeBlocks(timeBlocks => [...timeBlocks, newBlock])
+
         setModal(false)
+        let storedBlocks : string | null = localStorage.getItem("customStudyBlocks")
+        if (storedBlocks && !isBlock) {
+            let customBlocks : TimeBlock[] = JSON.parse(storedBlocks)
+            localStorage.setItem("customStudyBlocks", JSON.stringify([...customBlocks, newBlock]))
+        } else if (!isBlock) {
+            localStorage.setItem("customStudyBlocks", JSON.stringify([newBlock]))
+        }
+    }
+
+    const restoreCustomTimeBlocks = () => {
+        let storedBlocks : string | null = localStorage.getItem("customStudyBlocks")
+        if (storedBlocks) {
+            let customBlocks : TimeBlock[] = JSON.parse(storedBlocks)
+            for (let i in customBlocks) {
+                if (customBlocks[i].start) {
+                    customBlocks[i].start = new Date(customBlocks[i].start)
+                }
+                if (customBlocks[i].end) {
+                    customBlocks[i].end = new Date(customBlocks[i].end)
+                }
+            }
+            customBlocks.forEach(addCustomTimeBlock)
+        }
     }
 
     const addTimeBlocks = (icsData: string) => {
-        console.log(icsData.split("\n"))
         const newBlocks: TimeBlock[] = []
         let block: TimeBlock = {start: new Date(), end: new Date(), title: "", location: "", timetabled: true}
         for (const line of icsData.split("\n")) {
             if (line.startsWith("BEGIN:VEVENT")) {
-                console.log('event start')
                 block = {start: null, end: null, title: "", location: "", timetabled: true}
             } else if (line.startsWith("DTSTART:")) {
                 let str = line.slice("DTSTART:".length)
@@ -235,7 +262,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 let str = line.slice("LOCATION:".length)
                 block.location = str
             } else if (line.startsWith("END:VEVENT")) {
-                console.log(block)
                 newBlocks.push(block)
             }
         }
@@ -258,9 +284,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
             reader.onloadend = () => {
                 if (typeof reader.result === "string") {
                     setIcsFile(reader.result)
-                    console.log("an attempt was made")
                     addTimeBlocks(reader.result)
-                    console.log("Function returns")
                 }
 
             }
