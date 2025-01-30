@@ -38,11 +38,15 @@ CREATE TABLE building (
     latitude FLOAT,
     longitude FLOAT,
     opening_hours VARCHAR(256),
-    facilities TEXT,
     positions_occupied INT,
     max_capacity INT,
     created_at TIMESTAMP,
     has_access_point BOOLEAN,
+    facility_1 TEXT,
+    facility_2 TEXT,
+    facility_3 TEXT,
+    facility_4 TEXT,
+    facility_5 TEXT,
 );
 
 
