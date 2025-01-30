@@ -19,11 +19,16 @@ import {
 } from "@/components/ui/sidebar";
 
 interface Location {
-    id: number;
+    building_id: number;
     name: string;
     longitude: number;
     latitude: number;
-    population: number;
+    opening_hours: string;
+    facilities: string;
+    positions_occupied: number;
+    max_capacity: number;
+    created_at: string;
+    has_access_point: boolean;
 }
 
 function MapLayout() {
@@ -80,11 +85,11 @@ function MapLayout() {
         locations.forEach((location) => {
             const feature = new Feature({
                 geometry: new Point(fromLonLat([location.longitude, location.latitude])),
-                name: location.name,
-                population: location.population,
+                name: location.building_name,
+                population: location.max_capacity,
             });
 
-            const style = createFeatureStyle(location.population);
+            const style = createFeatureStyle(location.max_capacity);
             feature.setStyle(style);
 
             vectorSource.addFeature(feature);

@@ -83,7 +83,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
     useEffect(() => {
         fetchLocations()
-        fetchCrowdLevels()
+        // fetchCrowdLevels()
         restoreCustomTimeBlocks()
     }, [])
 
@@ -151,47 +151,47 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
             console.error('Error submitting crowd report:', error)
         }
     }
-
-    const handleStudyRequest = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault()
-        const formData = new FormData(event.currentTarget)
-        try {
-            const response = await fetch('/study_request', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: 1, // Replace with actual user ID from authentication
-                    location_id: formData.get('study-location'),
-                    subject: formData.get('study-subject'),
-                    preferred_time: formData.get('study-time'),
-                }),
-            })
-            if (response.ok) {
-                console.log('Study request submitted successfully')
-                fetchStudyMatches()
-            } else {
-                console.error('Failed to submit study request')
-            }
-        } catch (error) {
-            console.error('Error submitting study request:', error)
-        }
-    }
-
-    const fetchStudyMatches = async () => {
-        try {
-            const response = await fetch('/study_matches?user_id=1') // Replace with actual user ID from authentication
-            if (response.ok) {
-                const data = await response.json()
-                setStudyMatches(data)
-            } else {
-                console.error('Failed to fetch study matches')
-            }
-        } catch (error) {
-            console.error('Error fetching study matches:', error)
-        }
-    }
+    //
+    // const handleStudyRequest = async (event: FormEvent<HTMLFormElement>) => {
+    //     event.preventDefault()
+    //     const formData = new FormData(event.currentTarget)
+    //     try {
+    //         const response = await fetch('/study_request', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //             },
+    //             body: JSON.stringify({
+    //                 user_id: 1, // Replace with actual user ID from authentication
+    //                 location_id: formData.get('study-location'),
+    //                 subject: formData.get('study-subject'),
+    //                 preferred_time: formData.get('study-time'),
+    //             }),
+    //         })
+    //         if (response.ok) {
+    //             console.log('Study request submitted successfully')
+    //             fetchStudyMatches()
+    //         } else {
+    //             console.error('Failed to submit study request')
+    //         }
+    //     } catch (error) {
+    //         console.error('Error submitting study request:', error)
+    //     }
+    // }
+    //
+    // const fetchStudyMatches = async () => {
+    //     try {
+    //         const response = await fetch('/study_matches?user_id=1') // Replace with actual user ID from authentication
+    //         if (response.ok) {
+    //             const data = await response.json()
+    //             setStudyMatches(data)
+    //         } else {
+    //             console.error('Failed to fetch study matches')
+    //         }
+    //     } catch (error) {
+    //         console.error('Error fetching study matches:', error)
+    //     }
+    // }
 
         
     const addCustomTimeBlock = (block : TimeBlock) => {
@@ -337,7 +337,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                     <SidebarGroupLabel>Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
                                         {locations.map((location) => (
-                                            <Collapsible key={location.id}>
+                                            <Collapsible key={location.building_id}>
                                                 <Card className="mb-4 cursor-pointer" onClick={() => onLocationSelect(location.name, [location.latitude, location.longitude])}>
                                                     <CollapsibleTrigger className="w-full">
                                                         <CardHeader className="pb-2 flex justify-between items-center">
@@ -352,7 +352,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                                         location.crowd_level === 'low' ? 'text-green-500' :
                                                                             'text-orange-500'
                                                                 }`}>
-                                  {location.crowd_level || 'Unknown'}
+                                  {location.positions_occupied || 'Unknown'}
                                 </span>
                                                             </div>
                                                         </CardContent>
@@ -367,11 +367,11 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                                 <Wifi className="mr-2 h-4 w-4 mt-1" />
                                                                 <div>
                                                                     <span className="font-semibold">Facilities:</span>
-                                                                    <ul className="list-disc list-inside pl-4">
-                                                                        {location.facilities.map((facility, index) => (
-                                                                            <li key={index}>{facility}</li>
-                                                                        ))}
-                                                                    </ul>
+                                                                    {/*<ul className="list-disc list-inside pl-4">*/}
+                                                                    {/*    {location.facilities.map((facility, index) => (*/}
+                                                                    {/*        <li key={index}>{facility}</li>*/}
+                                                                    {/*    ))}*/}
+                                                                    {/*</ul>*/}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -551,7 +551,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                 <SidebarGroup>
                                     <SidebarGroupLabel>Study Match</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        <form className="space-y-4" onSubmit={handleStudyRequest}>
+                                        <form className="space-y-4">
                                             <div>
                                                 <Label htmlFor="study-location">Study Location</Label>
                                                 <Select name="study-location">

@@ -19,18 +19,19 @@ def login_form():
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
     cur = mysql.connection.cursor()
-    cur.execute('''SELECT building_id, name, latitude, longitude, opening_hours, facilities, max_capacity FROM building''')
+    cur.execute('''SELECT building_id, name, longitude, latitude, opening_hours, facilities, max_capacity, positions_occupied FROM building''')
     locations = cur.fetchall()
     cur.close()
 
     return jsonify([{
         'id': loc[0],
         'name': loc[1],
-        'latitude': float(loc[2]),
-        'longitude': float(loc[3]),
+        'longitude': float(loc[2]),
+        'latitude': float(loc[3]),
         'opening_hours': loc[4],
         'facilities': loc[5],
-        'max_capacity': loc[6].split(', ')
+        'max_capacity': loc[6],
+        'positions_occupied': loc[7]
     } for loc in locations])
 
 
