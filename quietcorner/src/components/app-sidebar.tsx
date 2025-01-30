@@ -1,8 +1,10 @@
 "use client"
 
-import {useState, useEffect, useRef, FormEvent, ChangeEvent} from 'react'
+import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
 import { addMinutes, format, parse, startOfDay } from 'date-fns'
 import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen } from 'lucide-react'
+import { Slider } from "@/components/ui/slider"
+
 
 import { Button } from '@/components/ui/button'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
@@ -29,29 +31,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { eventNames } from 'process'
 import { read } from 'fs'
 
-const locations = [
-    {
-        name: 'Main Library',
-        population: 300,
-        openingHours: '8:00 AM - 10:00 PM',
-        facilities: ['Study rooms', 'Computer labs', 'Printing services'],
-        coordinates: [53.4668, -2.2339],
-    },
-    {
-        name: 'Alan Gilbert Learning Commons',
-        population: 1000,
-        openingHours: '24/7',
-        facilities: ['Group study areas', 'Silent study zones', 'Café'],
-        coordinates: [53.4657, -2.2339],
-    },
-    {
-        name: 'Stopford Building Library',
-        population: 50,
-        openingHours: '9:00 AM - 7:00 PM',
-        facilities: ['Medical journals', 'Research databases', 'Quiet reading areas'],
-        coordinates: [53.4645, -2.2301],
-    },
-]
+type Location = {
+    building_id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    opening_hours: string;
+    positions_occupied: string;  // Added this field
+};
+
 
 
 type TimeBlock = {
@@ -74,6 +62,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const [studyMatches, setStudyMatches] = useState<any[]>([])
     const [icsFile, setIcsFile] = useState("")
     const [modal, setModal] = useState(false);
+    const [data, setData] = useState("");
 
     const icsInput = useRef<HTMLInputElement | null>(null)
     const studyStart = useRef<HTMLInputElement | null>(null)
@@ -82,8 +71,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const studyLocation = useRef<HTMLSelectElement | null>(null)
 
     useEffect(() => {
-        fetchLocations()
-        // fetchCrowdLevels()
         restoreCustomTimeBlocks()
     }, [])
 
@@ -93,62 +80,82 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     , [icsFile, date])
 
 
-    const fetchLocations = async () => {
-        try {
-            const response = await fetch('/api/locations')
-            if (response.ok) {
-                const data = await response.json()
-                setLocations(data)
-            } else {
-                console.error('Failed to fetch locations')
-            }
-        } catch (error) {
-            console.error('Error fetching locations:', error)
-        }
-    }
+    const [state, setState] = useState<{
+        locations: Location[];
+        isLoading: boolean;
+    }>({
+        locations: [],
+        isLoading: true
+    });
 
-    const fetchCrowdLevels = async () => {
-        try {
-            const response = await fetch('/api/crowd_levels')
-            if (response.ok) {
-                const data = await response.json()
-                setLocations(prevLocations =>
-                    prevLocations.map(loc => ({
-                        ...loc,
-                        crowd_level: data.find((item: any) => item.id === loc.id)?.crowd_level || 'unknown'
-                    }))
-                )
-            } else {
-                console.error('Failed to fetch crowd levels')
+    // Move the fetch logic outside of render
+    useEffect(() => {
+        const fetchData = async () => {
+            setState(prev => ({ ...prev, isLoading: true }));
+            try {
+                const locationsResponse = await fetch("/api/locations");
+                if (!locationsResponse.ok) {
+                    throw new Error("Failed to fetch locations");
+                }
+                const locationsData = await locationsResponse.json();
+
+                setState({
+                    locations: locationsData,
+                    isLoading: false
+                });
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                setState(prev => ({ ...prev, isLoading: false }));
             }
-        } catch (error) {
-            console.error('Error fetching crowd levels:', error)
-        }
-    }
+        };
+
+        fetchData();
+
+        const intervalId = setInterval(fetchData, 200000); // Update every 2 seconds
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    const handleLocationSelect = useCallback((name: string, coordinates: [number, number]) => {
+        onLocationSelect(name, coordinates);
+    }, [onLocationSelect]);
+
+    const getStatusColor = (positions_occupied: string) => {
+        const occupancy = parseInt(positions_occupied);
+        if (isNaN(occupancy)) return "text-gray-500";
+        if (occupancy >= 500) return "text-red-500";
+        if (occupancy >= 300) return "text-orange-500";
+        return "text-green-500";
+    };
+
+
+
+
 
     const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
+        const crowdLevel = formData.get("crowd_level")
         try {
-            const response = await fetch('/api/report_crowd', {
-                method: 'POST',
+            console.log(formData.get("location"), crowdLevel, formData.get("comments"))
+            const response = await fetch("/api/report_crowd", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    location_id: formData.get('location'),
-                    crowd_level: formData.get('crowd_level'),
-                    comments: formData.get('comments'),
+                    location_id: formData.get("location"),
+                    crowd_level: Number.parseFloat(crowdLevel as string),
+                    comments: formData.get("comments"),
                 }),
             })
             if (response.ok) {
-                console.log('Crowd report submitted successfully')
-                fetchCrowdLevels()
+                console.log("Crowd report submitted successfully")
             } else {
-                console.error('Failed to submit crowd report')
+                console.error("Failed to submit crowd report")
             }
         } catch (error) {
-            console.error('Error submitting crowd report:', error)
+            console.error("Error submitting crowd report:", error)
         }
     }
     //
@@ -336,49 +343,51 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                 <SidebarGroup>
                                     <SidebarGroupLabel>Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        {locations.map((location) => (
-                                            <Collapsible key={location.building_id}>
-                                                <Card className="mb-4 cursor-pointer" onClick={() => onLocationSelect(location.name, [location.latitude, location.longitude])}>
-                                                    <CollapsibleTrigger className="w-full">
-                                                        <CardHeader className="pb-2 flex justify-between items-center">
-                                                            <CardTitle>{location.name}</CardTitle>
-                                                            <ChevronDown className="h-4 w-4" />
-                                                        </CardHeader>
-                                                        <CardContent>
-                                                            <div className="flex items-center justify-between">
-                                                                <span>Crowd Level:</span>
-                                                                <span className={`font-bold ${
-                                                                    location.crowd_level === 'high' ? 'text-red-500' :
-                                                                        location.crowd_level === 'low' ? 'text-green-500' :
-                                                                            'text-orange-500'
-                                                                }`}>
-                                  {location.positions_occupied || 'Unknown'}
-                                </span>
-                                                            </div>
-                                                        </CardContent>
-                                                    </CollapsibleTrigger>
-                                                    <CollapsibleContent className="px-4 pb-4">
-                                                        <div className="mt-2 space-y-2">
-                                                            <div className="flex items-center">
-                                                                <Clock className="mr-2 h-4 w-4" />
-                                                                <span>Opening Hours: {location.opening_hours}</span>
-                                                            </div>
-                                                            <div className="flex items-start">
-                                                                <Wifi className="mr-2 h-4 w-4 mt-1" />
-                                                                <div>
-                                                                    <span className="font-semibold">Facilities:</span>
-                                                                    {/*<ul className="list-disc list-inside pl-4">*/}
-                                                                    {/*    {location.facilities.map((facility, index) => (*/}
-                                                                    {/*        <li key={index}>{facility}</li>*/}
-                                                                    {/*    ))}*/}
-                                                                    {/*</ul>*/}
+                                        {state.isLoading ? (
+                                            <p className="text-sm text-gray-500">Loading...</p>
+                                        ) : (
+                                            state.locations.map((location) => (
+                                                <Collapsible key={location.building_id}>
+                                                    <Card
+                                                        className="mb-4 cursor-pointer"
+                                                        onClick={() => handleLocationSelect(location.name, [location.latitude, location.longitude])}
+                                                    >
+                                                        <CollapsibleTrigger className="w-full">
+                                                            <CardHeader className="pb-2 flex justify-between items-center">
+                                                                <CardTitle>{location.name}</CardTitle>
+                                                                <div className={`font-bold ${getStatusColor(location.positions_occupied)}`}>
+                                                                    {location.positions_occupied}
                                                                 </div>
+                                                                <ChevronDown className="h-4 w-4 ml-2" />
+                                                            </CardHeader>
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="px-4 pb-4">
+                                                            <div className="mt-2 space-y-2">
+                                                                <div className="flex items-center">
+                                                                    <Clock className="mr-2 h-4 w-4"/>
+                                                                    <span
+                                                                        className="font-semibold">Opening Hours: </span>
+                                                                    <span> {location.opening_hours}</span>
+                                                                </div>
+                                                                <div className="flex items-start">
+                                                                    <Wifi className="mr-2 h-4 w-4 mt-1"/>
+                                                                    <div>
+                                                                        <span
+                                                                            className="font-semibold">Facilities:</span>
+                                                                        <ul className="list-disc list-inside pl-4">
+                                                                            <li>{location.facility_1}</li>
+                                                                            <li>{location.facility_2}</li>
+                                                                            <li>{location.facility_3}</li>
+                                                                                </ul>
+                                                                    </div>
+                                                                </div>
+
                                                             </div>
-                                                        </div>
-                                                    </CollapsibleContent>
-                                                </Card>
-                                            </Collapsible>
-                                        ))}
+                                                        </CollapsibleContent>
+                                                    </Card>
+                                                </Collapsible>
+                                            ))
+                                        )}
                                     </SidebarGroupContent>
                                 </SidebarGroup>
                             </TabsContent>
@@ -391,11 +400,12 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 <Label htmlFor="location">Location</Label>
                                                 <Select name="location">
                                                     <SelectTrigger id="location">
-                                                        <SelectValue placeholder="Select location" />
+                                                        <SelectValue placeholder="Select location"/>
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {locations.map((location) => (
-                                                            <SelectItem key={location.id} value={location.id.toString()}>
+                                                        {state.locations.map((location) => (
+                                                            <SelectItem key={location.building_id}
+                                                                        value={location.name}>
                                                                 {location.name}
                                                             </SelectItem>
                                                         ))}
@@ -404,24 +414,22 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                             </div>
                                             <div>
                                                 <Label>Crowd Level</Label>
-                                                <RadioGroup name="crowd_level" defaultValue="medium">
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="low" id="low" />
-                                                        <Label htmlFor="low">Low</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="medium" id="medium" />
-                                                        <Label htmlFor="medium">Medium</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="high" id="high" />
-                                                        <Label htmlFor="high">High</Label>
-                                                    </div>
-                                                </RadioGroup>
+                                                <Slider
+                                                    id="crowd_level"
+                                                    name="crowd_level"
+                                                    defaultValue={[0]}
+                                                    max={1}
+                                                    step={0.01}
+                                                    onValueChange={(value) => {
+                                                        // You can add any additional logic here if needed
+                                                        console.log("Crowd level:", value[0])
+                                                    }}
+                                                />
                                             </div>
                                             <div>
                                                 <Label htmlFor="comments">Comments (optional)</Label>
-                                                <Input id="comments" name="comments" placeholder="Any additional information..." />
+                                                <Input id="comments" name="comments"
+                                                       placeholder="Any additional information..."/>
                                             </div>
                                             <Button type="submit">Submit Report</Button>
                                         </form>
@@ -433,7 +441,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                     <SidebarGroupLabel>Schedule</SidebarGroupLabel>
                                     <SidebarGroupContent className="h-full">
                                         <div className="flex flex-col h-full">
-                                            <CalendarComponent
+                                        <CalendarComponent
                                                 mode="single"
                                                 selected={date}
                                                 onSelect={setDate}

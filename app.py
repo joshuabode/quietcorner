@@ -14,12 +14,18 @@ mysql = MySQL(app)
 @app.get("/login")
 def login_form():
     return
+@app.route('/api/report_crowd', methods=['POST'])
+def report_crowd():
+    data = request.json
+
+
+    return jsonify({"message": "Crowd report submitted successfully"}), 201
 
 
 @app.route('/api/locations', methods=['GET'])
 def get_locations():
     cur = mysql.connection.cursor()
-    cur.execute('''SELECT building_id, name, longitude, latitude, opening_hours, facilities, max_capacity, positions_occupied FROM building''')
+    cur.execute('''SELECT building_id, name, longitude, latitude, opening_hours, max_capacity, positions_occupied, has_access_point, facility_1, facility_2, facility_3 FROM building''')
     locations = cur.fetchall()
     cur.close()
 
@@ -29,9 +35,13 @@ def get_locations():
         'longitude': float(loc[2]),
         'latitude': float(loc[3]),
         'opening_hours': loc[4],
-        'facilities': loc[5],
-        'max_capacity': loc[6],
-        'positions_occupied': loc[7]
+        'max_capacity': loc[5],
+        'positions_occupied': loc[6],
+        'has_access_point': loc[7],
+        'facility_1': loc[8],
+        'facility_2': loc[9],
+        'facility_3': loc[10],
+
     } for loc in locations])
 
 
