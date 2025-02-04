@@ -523,7 +523,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                             Location:
                                                         </Label>
                                         
-                                                        <select name="location" ref={studyLocation} className='border border-gray-300 text-gray-900 rounded-lg'>
+                                                        <select name="location" ref={studyLocation} className='border border-gray-300 text-gray-900 rounded-lg h-12'>
                                                             <option value="Main Library">Main Library</option>
                                                             <option value="Stopford Building Library">Stopford Building Library</option>
                                                             <option value="Alan Gilbert Learning Commons">Alan Gilbert Learning Commons</option>
