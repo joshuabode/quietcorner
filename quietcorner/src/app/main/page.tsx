@@ -18,12 +18,17 @@ import {
     SidebarProvider,
 } from "@/components/ui/sidebar";
 
-interface Location {
-    id: number;
+type Location = {
+    building_id: number;
     name: string;
     longitude: number;
     latitude: number;
-    population: number;
+    opening_hours: string;
+    facilities: string;
+    positions_occupied: number;
+    max_capacity: number;
+    created_at: string;
+    has_access_point: boolean;
 }
 
 function MapLayout() {
@@ -56,15 +61,35 @@ function MapLayout() {
     const [map, setMap] = useState<Map | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
     const mapElement = useRef<HTMLDivElement>(null);
-    const popupElement = useRef<HTMLDivElement>(null);
+    const [vectorSource, setVectorSource] = useState(new VectorSource());
+
 
     useEffect(() => {
-        authenticate();
+        const fetchData = async () => {
+            try {
+                const locationsResponse = await fetch("/api/locations");
+                if (!locationsResponse.ok) {
+                    throw new Error("Failed to fetch locations");
+                }
+                const locationsData = await locationsResponse.json();
+                setLocations(locationsData); // Update state with new locations
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        };
+
+
+        fetchData();
+
+        const intervalId = setInterval(fetchData, 2000); // Update every 10ms
+
+
+        return () => clearInterval(intervalId);
     }, []);
 
     useEffect(() => {
         if (authenticated) {
-            fetchLocations();
+            //
         }
     }, [authenticated]);
 
@@ -73,20 +98,6 @@ function MapLayout() {
             initializeMap();
         }
     }, [locations]);
-
-    const fetchLocations = async () => {
-        try {
-            const response = await fetch('/api/locations');
-            if (!response.ok) {
-                throw new Error('Failed to fetch locations');
-            }
-            const data = await response.json();
-            setLocations(data);
-        } catch (error) {
-            console.error('Error fetching locations:', error);
-        }
-    };
-
     const initializeMap = () => {
         const initialMap = new Map({
             target: mapElement.current!,
@@ -111,32 +122,24 @@ function MapLayout() {
         locations.forEach((location) => {
             const feature = new Feature({
                 geometry: new Point(fromLonLat([location.longitude, location.latitude])),
-                name: location.name,
-                population: location.population,
+                name: location.building_name,
+                population: location.max_capacity,
             });
 
-            const style = createFeatureStyle(location.population);
+            const style = createFeatureStyle(location.max_capacity);
             feature.setStyle(style);
 
             vectorSource.addFeature(feature);
         });
 
-        const popup = new Overlay({
-            element: popupElement.current!,
-            positioning: 'bottom-center',
-            offset: [0, -10],
-        });
 
-        initialMap.addOverlay(popup);
 
         initialMap.on('click', (event) => {
             const feature = initialMap.forEachFeatureAtPixel(event.pixel, (feature) => feature);
             if (feature) {
                 const coordinates = (feature.getGeometry() as Point).getCoordinates();
-                popup.setPosition(coordinates);
                 setSelectedLocation(feature.get('name'));
             } else {
-                popup.setPosition(undefined);
                 setSelectedLocation(null);
             }
         });
@@ -176,54 +179,39 @@ function MapLayout() {
         }
     };
 
-    const displayHome = () => {
-        if (authenticated) {
-            return (
-                <div>
-                    <SidebarProvider
-                        style={
-                            {
-                                "--sidebar-width": "400px",
-                            } as React.CSSProperties
-                        }
-                    >
-                        <AppSidebar onLocationSelect={handleLocationSelect} />
-                        <SidebarInset>
-                            <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
-                                <div ref={popupElement} className="ol-popup">
-                                    {selectedLocation && (
-                                        <div className="bg-white p-2 rounded shadow">
-                                            <h3 className="font-bold">{selectedLocation}</h3>
-                                            <p>Crowd Level: {
-                                                (() => {
-                                                    const location = locations.find(l => l.name === selectedLocation);
-                                                    if (location) {
-                                                        if (location.population > 500) return 'High';
-                                                        if (location.population < 200) return 'Low';
-                                                        return 'Medium';
-                                                    }
-                                                    return 'Unknown';
-                                                })()
-                                            }</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </SidebarInset>
-                    </SidebarProvider>
-                </div>
-            );
-        } else {
-            return (
-                window.location.href = nextAuthUrl
-            );
-        }
-    }
-    
-    useEffect(() => {
-        displayHome();
-    }, [authenticated, nextAuthUrl]);
-    
+    return (
+        <div>
+            <SidebarProvider
+                style={
+                    {
+                        "--sidebar-width": "400px",
+                    } as React.CSSProperties
+                }
+            >
+                <AppSidebar onLocationSelect={handleLocationSelect} />
+                <SidebarInset>
+                    <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
+                    {/*        {selectedLocation && (*/}
+                    {/*            <div className="bg-white p-2 rounded shadow">*/}
+                    {/*                <h3 className="font-bold">{selectedLocation}</h3>*/}
+                    {/*                <p>Crowd Level: {*/}
+                    {/*                    (() => {*/}
+                    {/*                        const location = locations.find(l => l.name === selectedLocation);*/}
+                    {/*                        if (location) {*/}
+                    {/*                            if (location.population > 500) return 'High';*/}
+                    {/*                            if (location.population < 200) return 'Low';*/}
+                    {/*                            return 'Medium';*/}
+                    {/*                        }*/}
+                    {/*                        return 'Unknown';*/}
+                    {/*                    })()*/}
+                    {/*                }</p>*/}
+                    {/*            </div>*/}
+                    {/*        )}*/}
+                    </div>
+                </SidebarInset>
+            </SidebarProvider>
+        </div>
+    );
 }
 
 export default MapLayout;
