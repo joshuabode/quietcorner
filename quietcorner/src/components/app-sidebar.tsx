@@ -2,7 +2,7 @@
 
 import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
 import { addMinutes, format, parse, startOfDay } from 'date-fns'
-import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen } from 'lucide-react'
+import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
 import { Slider } from "@/components/ui/slider"
 
 
@@ -127,10 +127,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         if (occupancy >= 300) return "text-orange-500";
         return "text-green-500";
     };
-
-
-
-
 
     const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()

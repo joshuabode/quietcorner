@@ -10,7 +10,7 @@ from flask import session, redirect, Response
 from flask_session import Session # Change to ... import SqlAlchemySessionInterface later
 
 AUTHENTICATION_SERVICE_URL = 'http://studentnet.cs.manchester.ac.uk/authenticate/'
-DEVELOPER_URL = 'http://localhost:3000/main/'
+DEVELOPER_URL = 'http://localhost:3000/main'
 AUTHENTICATION_LOGOUT_URL = 'http://studentnet.cs.manchester.ac.uk/systemlogout.php'
 APP_HOME_URL = 'http://localhost:3000/main/'
 
@@ -65,21 +65,20 @@ class Authenticator:
         url = self.get_authentication_url('confirm')
         url += '&username=' + quote_plus(quote(self.request.get('username')))
         url += '&fullname=' + quote_plus(quote(self.request.get('fullname')))
-        print(url)
         if urlopen(url, context=ctx).read() != 'true':
             self.fail_authentication()
             return False
         else:
             return True
         
-    def fail_authentication(self) -> Response:
-        return redirect('/no-auth')
+    def fail_authentication(self) -> dict:
+        return {'auth': False, 'url': APP_HOME_URL + '/failed-auth'}
     
     def get_time_authenticated(self) -> int:
         if session.get('authenticated'):
             return session.get('authenticated')
         return None
     
-    def invalidate_user(self) -> Response:
+    def invalidate_user(self) -> dict:
         session.clear()
         return {'auth': False, 'url': AUTHENTICATION_LOGOUT_URL}
