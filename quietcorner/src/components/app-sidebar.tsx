@@ -111,7 +111,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 200000); // Update every 2 seconds
+        const intervalId = setInterval(fetchData, 2000); // Update every 2 seconds
 
         return () => clearInterval(intervalId);
     }, []);

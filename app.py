@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_mysqldb import MySQL
 import threading
 import statistics
+import sys
 
 app = Flask(__name__)
 previous_reports = {}
@@ -21,41 +22,43 @@ def login_form():
 def report_crowd():
 
     data = request.json
-    building_id = data["location_id"]
+    building_name = data["location_id"].strip()
     crowd_level = data["crowd_level"]
-
     cur = mysql.connection.cursor()
-    cur.execute("SELECT positions_occupied, max_capacity FROM building WHERE building_id = %s",(building_id,))
-    occupancy = cur.fetchone()
-    positions_occupied = occupancy[0]
-    max_capacity = occupancy[1]
+    print(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
+    cur.execute(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
+    occupancy = cur.fetchall()
+    print(occupancy)
+    positions_occupied = occupancy[0][0]
+    max_capacity = occupancy[0][1]
 
     new_report = crowd_level * max_capacity
     total_reports = 0
     try:
-        total_reports = len(previous_reports[building_id])
+        total_reports = len(previous_reports[building_name])
     except:
         with lock:
-            previous_reports[building_id] = [new_report]
+            previous_reports[building_name] = [new_report]
     if(total_reports>0):
         with lock:
-            previous_reports[building_id].append(new_report)
+            previous_reports[building_name].append(new_report)
     # if memory becomes an issue (i.e this array becomes too large which is unlikely)
     # this array could have a fixed size of 5 items- by moving the items up and replacing
     # the oldest one.
 
-    if (len(previous_reports[building_id])>=5):
-        report_array= previous_reports[building_id][-5:]
+    if (len(previous_reports[building_name])>=5):
+        report_array= previous_reports[building_name][-5:]
+        print(previous_reports)
         mean = statistics.mean(report_array)
         standard_devation = statistics.stdev(report_array)
 
-        if (mean - (2*standard_devation) <= new_report and 
-            mean + (2*standard_devation) >= new_report):
+        if (mean - (standard_devation) <= new_report and
+            mean + (standard_devation) >= new_report):
             weight = 0.6
             positions_occupied = round( (weight * new_report) + 
                                         ((1 - weight) * positions_occupied) )
         
-            cur.execute("UPDATE building SET positions_occupied = %s WHERE building_id = %s", (positions_occupied, building_id))
+            cur.execute(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
             mysql.connection.commit()
             cur.close()
 
@@ -64,7 +67,10 @@ def report_crowd():
             cur.close()
             return jsonify({"message": "Crowd Report taken, too much variance"}), 200
     else:
-        cur.execute("UPDATE building SET positions_occupied = %s WHERE building_id = %s", (positions_occupied, building_id))
+        cur.execute(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
+        print(previous_reports)
+        print(new_report)
+        print(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
         mysql.connection.commit()
         cur.close()
         return jsonify({"message": "Crowd report submitted successfully "}), 201
