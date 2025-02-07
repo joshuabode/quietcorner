@@ -11,7 +11,6 @@ import { Vector as VectorSource } from 'ol/source';
 import { Vector as VectorLayer } from 'ol/layer';
 import { fromLonLat } from 'ol/proj';
 import { Circle, Style, Fill, Stroke } from 'ol/style';
-import Overlay from 'ol/Overlay';
 import AppSidebar from "@/components/app-sidebar";
 import {
     SidebarInset,
@@ -32,6 +31,7 @@ type Location = {
 }
 
 function MapLayout() {
+    const [authenticated, setAuthentication] = useState(true)
     const [locations, setLocations] = useState<Location[]>([]);
     const [map, setMap] = useState<Map | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
@@ -40,6 +40,7 @@ function MapLayout() {
 
 
     useEffect(() => {
+        authAPI()
         const fetchData = async () => {
             try {
                 const locationsResponse = await fetch("/api/locations");
@@ -53,14 +54,15 @@ function MapLayout() {
             }
         };
 
-
+        
         fetchData();
 
-        const intervalId = setInterval(fetchData, 2000); // Update every 10ms
+        const intervalId = setInterval(fetchData, 2000); // Update every 2s
 
 
         return () => clearInterval(intervalId);
     }, []);
+
 
     useEffect(() => {
         if (!map) {
@@ -102,6 +104,30 @@ function MapLayout() {
             vectorSource.addFeature(feature);
         });
     }, [locations]);
+
+    const authAPI = async () => {
+        try {
+            const authenticationResponse = await fetch('http://localhost:5000/api/login'+window.location.search, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Credentials': 'true'},
+                mode: 'cors',
+                credentials: 'include',
+                
+            });
+            const data = await authenticationResponse.json();
+
+            if (!data.auth)
+                location.replace(data.url);
+            setAuthentication(data.auth);
+            return data.auth
+        } catch(error) {
+            console.error("An error occured during authentication")
+        }
+
+
+    }
+
+
     
     const initializeMap = () => {
         const initialMap = new Map({
@@ -184,7 +210,8 @@ function MapLayout() {
         }
     };
 
-    return (
+
+    if (authenticated) {return (
         <div>
             <SidebarProvider
                 style={
@@ -216,7 +243,11 @@ function MapLayout() {
                 </SidebarInset>
             </SidebarProvider>
         </div>
-    );
+    );}
+
+    else {
+        authAPI();
+    }
 }
 
 export default MapLayout;
