@@ -2,6 +2,8 @@ CREATE DATABASE campus_maps;
 
 USE campus_maps;
 
+--calendar data: holds the raw binary ics file of the user's timetable data
+
 CREATE TABLE user (
                       username VARCHAR(20) PRIMARY KEY,
                       email VARCHAR(256),
@@ -9,19 +11,9 @@ CREATE TABLE user (
                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- password table likely to be removed later
-CREATE TABLE password (
-                          username VARCHAR(20) PRIMARY KEY,
-                          encrypted_pass BLOB,
-                          salt BLOB,
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- PROPOSED CHANGES MADE ON 30/01/2025
--- end_of_session table removed
--- if the record is added from an event on the user's timetable, then the start and end times are automatically filled in
--- if the record is added from a card swipe, the end attribute will be null until the user swipes again
--- to add a record from a timetabled event, first check the has_access_point attribute for the building in the buildings table
+--session_id is unique for all records. so 2 users cannot have the same session id in the db
+--session_start and session_end are the start and end times the user is in the building for. used to make
+--changes to the positinos_occupied field in the buildings table
 
 CREATE TABLE start_of_session (
                                   session_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -32,9 +24,16 @@ CREATE TABLE start_of_session (
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+--latitude and longitude contain the coordinated of the building
+--ration of positions_occupied to max_capacity can be used to gauge how full the building is
+--has_access_point indicates if the building has a card scanner
+
+--facility_n holds text info about a particular facility in the building. can contain a description or directions up 
+--to ~65k characters. Holds info for up to 5 facitilies
+
 CREATE TABLE building (
                           building_id INT PRIMARY KEY AUTO_INCREMENT,
-                          name TEXT,
+                          name VARCHAR(256),
                           latitude FLOAT,
                           longitude FLOAT,
                           opening_hours VARCHAR(256),
