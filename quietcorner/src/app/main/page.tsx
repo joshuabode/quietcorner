@@ -102,6 +102,7 @@ function MapLayout() {
             vectorSource.addFeature(feature);
         });
     }, [locations]);
+    
     const initializeMap = () => {
         const initialMap = new Map({
             target: mapElement.current!,

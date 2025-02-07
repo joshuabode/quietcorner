@@ -91,7 +91,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     // Move the fetch logic outside of render
     useEffect(() => {
         const fetchData = async () => {
-            setState(prev => ({ ...prev, isLoading: true }));
             try {
                 const locationsResponse = await fetch("/api/locations");
                 if (!locationsResponse.ok) {
@@ -105,7 +104,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 });
             } catch (error) {
                 console.error("Error fetching data:", error);
-                setState(prev => ({ ...prev, isLoading: false }));
+                setState(prev => ({ ...prev, isLoading: true }));
             }
         };
 
@@ -343,8 +342,10 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                 <SidebarGroup>
                                     <SidebarGroupLabel>Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        {state.isLoading ? (
+                                        {state.isLoading ? (<>
                                             <p className="text-sm text-gray-500">Loading...</p>
+                                        </>
+                                   
                                         ) : (
                                             state.locations.map((location) => (
                                                 <Collapsible key={location.building_id}>
