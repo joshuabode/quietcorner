@@ -7,5 +7,5 @@ USE campus_maps;
 --username of the user
 --building the user has entered
 
-INSERT INTO session (username, building_id, session_start)
+INSERT INTO user_session (username, building_id, session_start)
 VALUES (@username, @building_id, CURRENT_TIMESTAMP);

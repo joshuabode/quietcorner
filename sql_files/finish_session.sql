@@ -8,7 +8,7 @@ USE campus_maps;
 --parameters:
 --username of the user to edit the record for
 
-UPDATE session
+UPDATE user_session
 SET session_end = CURRENT_TIMESTAMP
 WHERE session_id = (
     SELECT MAX(session_id)

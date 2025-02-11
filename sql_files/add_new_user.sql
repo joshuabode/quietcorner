@@ -5,7 +5,7 @@
 
 --you can run this file from javascript and pass arguments from there
 
-USE campus_maps
+USE campus_maps;
 
 INSERT INTO user (username, email, calendar_data)
 VALUES(@username, @email, NULL);
