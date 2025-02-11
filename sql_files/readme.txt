@@ -1,0 +1,1 @@
+Contains all sql files for the project. These sql should be used for testing purposes to see that the db model works.

@@ -2,7 +2,7 @@
 
 import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
 import { addMinutes, format, parse, startOfDay } from 'date-fns'
-import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen } from 'lucide-react'
+import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
 import { Slider } from "@/components/ui/slider"
 
 
@@ -91,7 +91,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     // Move the fetch logic outside of render
     useEffect(() => {
         const fetchData = async () => {
-            setState(prev => ({ ...prev, isLoading: true }));
             try {
                 const locationsResponse = await fetch("/api/locations");
                 if (!locationsResponse.ok) {
@@ -105,7 +104,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 });
             } catch (error) {
                 console.error("Error fetching data:", error);
-                setState(prev => ({ ...prev, isLoading: false }));
+                setState(prev => ({ ...prev, isLoading: true }));
             }
         };
 
@@ -127,10 +126,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         if (occupancy >= 300) return "text-orange-500";
         return "text-green-500";
     };
-
-
-
-
 
     const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -343,8 +338,10 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                 <SidebarGroup>
                                     <SidebarGroupLabel>Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        {state.isLoading ? (
+                                        {state.isLoading ? (<>
                                             <p className="text-sm text-gray-500">Loading...</p>
+                                        </>
+                                   
                                         ) : (
                                             state.locations.map((location) => (
                                                 <Collapsible key={location.building_id}>

@@ -1,4 +1,4 @@
 INSERT INTO building (name, latitude, longitude, opening_hours, positions_occupied, max_capacity,created_at, has_access_point, facility_1, facility_2, facility_3)
-VALUES("Alan Gilbert Learning Commons", 53.4657,-2.2339, '24/7',  0, 1000,CURRENT_TIMESTAMP ,True,"Group study areas", "Silent study zones", "Café" ),
-      ("Main Library", 53.4668,-2.2339,'8:00 AM - 10:00 PM',  0, 1000,CURRENT_TIMESTAMP, True,"Study rooms", "Computer labs", "Printing services" ),
-      ("Stopford Building Library", 53.4645,-2.2301,'8:00 AM - 10:00 PM',  0, 1000,CURRENT_TIMESTAMP, False,"Study rooms", "Computer labs", "Printing services" );
+VALUES("Alan Gilbert Learning Commons", 53.4649, -2.2332, '24/7',  0, 700,CURRENT_TIMESTAMP ,True,"Group study areas", "Silent study zones", "Café" ),
+      ("Main Library", 53.4646, -2.2354,'8:00 AM - 10:00 PM',  0, 2000,CURRENT_TIMESTAMP, True,"Study rooms", "Computer labs", "Printing services" ),
+      ("Stopford Building Library", 53.4645,-2.2301,'8:00 AM - 10:00 PM',  0, 200,CURRENT_TIMESTAMP, False,"Study rooms", "Computer labs", "Printing services" );

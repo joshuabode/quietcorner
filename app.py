@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
+from flask_session import Session 
 from flask_mysqldb import MySQL
 import threading
 import statistics
 import sys
+from flask_cors import CORS
+from authenticator import Authenticator
+from datetime import timedelta
 
 app = Flask(__name__)
 previous_reports = {}
@@ -11,13 +15,15 @@ lock = threading.Lock()
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_DB'] = 'campus_maps'
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=3)
+app.config["SESSION_TYPE"] = "filesystem"
+Session(app)
+CORS(app, supports_credentials=True)
 
 mysql = MySQL(app)
 
-@app.get("/")
-@app.get("/login")
-def login_form():
-    return
+
 @app.route('/api/report_crowd', methods=['POST'])
 def report_crowd():
 
@@ -99,16 +105,12 @@ def get_locations():
 
     } for loc in locations])
 
+@app.get('/api/login')
+def login():
+    authentication_data = Authenticator(request.args).validate_user()
+    return jsonify(authentication_data)
 
-@app.post("/")
-@app.post("/login")
-def authenticate():
-    return
-
-@app.get("/register")
-def registration():
-    return
-
-@app.post("/register")
-def new_user():
-    return
+@app.get('/api/logout')
+def logout():
+    deauthentication_data = Authenticator(request.args).invalidate_user()
+    return jsonify(deauthentication_data)
