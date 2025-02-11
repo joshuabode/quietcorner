@@ -98,7 +98,7 @@ function MapLayout() {
                 population: location.positions_occupied,
             });
 
-            const style = createFeatureStyle(location.positions_occupied);
+            const style = createFeatureStyle(location.max_capacity, location.positions_occupied);
             feature.setStyle(style);
 
             vectorSource.addFeature(feature);
@@ -157,7 +157,7 @@ function MapLayout() {
                 population: location.max_capacity,
             });
 
-            const style = createFeatureStyle(location.max_capacity);
+            const style = createFeatureStyle(location.max_capacity, location.positions_occupied);
             feature.setStyle(style);
 
             vectorSource.addFeature(feature);
@@ -178,17 +178,10 @@ function MapLayout() {
         setMap(initialMap);
     };
 
-    const createFeatureStyle = (population: number) => {
-        let color = '#FF6600';
-        let radius = 20;
-
-        if (population > 500) {
-            color = '#FF0000';
-            radius = 30;
-        } else if (population < 200) {
-            color = '#00FF00';
-            radius = 10;
-        }
+    const createFeatureStyle = (capacity: number, population: number) => {
+        console.log(population/capacity)
+        let color = `hsl(${120*(1 - population/capacity)}, 100%, 50%)`;
+        let radius = Math.sqrt(capacity/2);
 
         return new Style({
             image: new Circle({
