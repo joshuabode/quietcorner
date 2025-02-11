@@ -30,6 +30,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { eventNames } from 'process'
 import { read } from 'fs'
+import { timeStamp } from 'console'
 
 type Location = {
     building_id: string;
@@ -40,14 +41,17 @@ type Location = {
     positions_occupied: string;  // Added this field
 };
 
-
-
 type TimeBlock = {
     start: Date | null
     end: Date | null
     title: string
     location: string
     timetabled: boolean
+}
+
+type ReportResponse = {
+    message: string | null
+    successful: boolean
 }
 
 type AppSidebarProps = {
@@ -63,6 +67,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const [icsFile, setIcsFile] = useState("")
     const [modal, setModal] = useState(false);
     const [data, setData] = useState("");
+    const [reportResponse, setReportResponse] = useState<ReportResponse>({message: "", successful: true});
 
     const icsInput = useRef<HTMLInputElement | null>(null)
     const studyStart = useRef<HTMLInputElement | null>(null)
@@ -131,23 +136,27 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         event.preventDefault()
         const formData = new FormData(event.currentTarget)
         const crowdLevel = formData.get("crowd_level")
+        const urlParams = new URLSearchParams(window.location.search)
         try {
-            console.log(formData.get("location"), crowdLevel, formData.get("comments"))
             const response = await fetch("/api/report_crowd", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
+                    timestamp: Date.now(),
                     location_id: formData.get("location"),
+                    username: urlParams.get('username'),
                     crowd_level: Number.parseFloat(crowdLevel as string),
                     comments: formData.get("comments"),
                 }),
             })
             if (response.ok) {
-                console.log("Crowd report submitted successfully")
+                setReportResponse({successful: true, message: "Crowd report submitted successfully"})
             } else {
                 console.error("Failed to submit crowd report")
+                let responseBody = await response.json()
+                setReportResponse({successful: false, message: "Failed to submit crowd report: " + responseBody.message})
             }
         } catch (error) {
             console.error("Error submitting crowd report:", error)
@@ -429,6 +438,11 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                        placeholder="Any additional information..."/>
                                             </div>
                                             <Button type="submit">Submit Report</Button>
+                                            <div>
+                                                <p className={`text-${reportResponse.successful ? 'green': 'red'}-500`}>
+                                                    {reportResponse.message}
+                                                </p>
+                                            </div>
                                         </form>
                                     </SidebarGroupContent>
                                 </SidebarGroup>

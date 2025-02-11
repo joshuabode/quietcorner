@@ -153,7 +153,7 @@ function MapLayout() {
         locations.forEach((location) => {
             const feature = new Feature({
                 geometry: new Point(fromLonLat([location.longitude, location.latitude])),
-                name: location.building_name,
+                name: location.name,
                 population: location.max_capacity,
             });
 
@@ -179,7 +179,6 @@ function MapLayout() {
     };
 
     const createFeatureStyle = (capacity: number, population: number) => {
-        console.log(population/capacity)
         let color = `hsl(${120*(1 - population/capacity)}, 100%, 50%)`;
         let radius = Math.sqrt(capacity/2);
 
@@ -216,22 +215,22 @@ function MapLayout() {
                 <AppSidebar onLocationSelect={handleLocationSelect} />
                 <SidebarInset>
                     <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
-                    {/*        {selectedLocation && (*/}
-                    {/*            <div className="bg-white p-2 rounded shadow">*/}
-                    {/*                <h3 className="font-bold">{selectedLocation}</h3>*/}
-                    {/*                <p>Crowd Level: {*/}
-                    {/*                    (() => {*/}
-                    {/*                        const location = locations.find(l => l.name === selectedLocation);*/}
-                    {/*                        if (location) {*/}
-                    {/*                            if (location.population > 500) return 'High';*/}
-                    {/*                            if (location.population < 200) return 'Low';*/}
-                    {/*                            return 'Medium';*/}
-                    {/*                        }*/}
-                    {/*                        return 'Unknown';*/}
-                    {/*                    })()*/}
-                    {/*                }</p>*/}
-                    {/*            </div>*/}
-                    {/*        )}*/}
+                           {selectedLocation && (
+                                <div className="bg-white p-2 rounded shadow">
+                                    <h3 className="font-bold">{selectedLocation}</h3>
+                                    <p>Crowd Level: {
+                                        (() => {
+                                            const location = locations.find(l => l.name === selectedLocation);
+                                            if (location) {
+                                                if (location.positions_occupied> 500) return 'High';
+                                                if (location.positions_occupied < 200) return 'Low';
+                                                return 'Medium';
+                                            }
+                                            return 'Unknown';
+                                        })()
+                                    }</p>
+                                </div>
+                            )}
                     </div>
                 </SidebarInset>
             </SidebarProvider>

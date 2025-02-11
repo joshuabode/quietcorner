@@ -4,12 +4,15 @@ from flask_mysqldb import MySQL
 import threading
 import statistics
 import sys
+import time
 from flask_cors import CORS
 from authenticator import Authenticator
 from datetime import timedelta
 
 app = Flask(__name__)
 previous_reports = {}
+active_users = []
+active_user_reports = []
 lock = threading.Lock()
 
 app.config['MYSQL_HOST'] = 'localhost'
@@ -26,60 +29,72 @@ mysql = MySQL(app)
 
 @app.route('/api/report_crowd', methods=['POST'])
 def report_crowd():
-
+    print("\n\n" + str(active_user_reports) + "\n\n")
     data = request.json
-    building_name = data["location_id"].strip()
-    crowd_level = data["crowd_level"]
-    cur = mysql.connection.cursor()
-    print(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
-    cur.execute(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
-    occupancy = cur.fetchall()
-    print(occupancy)
-    positions_occupied = occupancy[0][0]
-    max_capacity = occupancy[0][1]
+    report_valid = True
+    for activity in active_user_reports:
+        if activity["username"] == data["username"] and activity["location_id"] == data["location_id"]:
+            if time.time_ns()*1000 < activity["timestamp"] + 1.8*(10**6):
+                active_user_reports.remove(activity)
+            else:
+                report_valid = False
+    
+    if report_valid:
+        active_user_reports.append({"username": data["username"], "location_id": data["location_id"], "timestamp": time.time_ns()*1000})
+        building_name = data["location_id"].strip()
+        crowd_level = data["crowd_level"]
+        cur = mysql.connection.cursor()
+        print(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
+        cur.execute(f"SELECT positions_occupied, max_capacity FROM campus_maps.building WHERE name = \"{building_name}\"")
+        occupancy = cur.fetchall()
+        print(occupancy)
+        positions_occupied = occupancy[0][0]
+        max_capacity = occupancy[0][1]
 
-    new_report = crowd_level * max_capacity
-    total_reports = 0
-    try:
-        total_reports = len(previous_reports[building_name])
-    except:
-        with lock:
-            previous_reports[building_name] = [new_report]
-    if(total_reports>0):
-        with lock:
-            previous_reports[building_name].append(new_report)
-    # if memory becomes an issue (i.e this array becomes too large which is unlikely)
-    # this array could have a fixed size of 5 items- by moving the items up and replacing
-    # the oldest one.
+        new_report = crowd_level * max_capacity
+        total_reports = 0
+        try:
+            total_reports = len(previous_reports[building_name])
+        except:
+            with lock:
+                previous_reports[building_name] = [new_report]
+        if(total_reports>0):
+            with lock:
+                previous_reports[building_name].append(new_report)
+        # if memory becomes an issue (i.e this array becomes too large which is unlikely)
+        # this array could have a fixed size of 50 items- by moving the items up and replacing
+        # the oldest one.
 
-    if (len(previous_reports[building_name])>=5):
-        report_array= previous_reports[building_name][-5:]
-        print(previous_reports)
-        mean = statistics.mean(report_array)
-        standard_devation = statistics.stdev(report_array)
+        if (len(previous_reports[building_name])>=50):
+            report_array= previous_reports[building_name][-50:]
+            print(previous_reports)
+            mean = statistics.mean(report_array)
+            standard_devation = statistics.stdev(report_array)
 
-        if (mean - (standard_devation) <= new_report and
-            mean + (standard_devation) >= new_report):
-            weight = 0.6
-            positions_occupied = round( (weight * new_report) + 
-                                        ((1 - weight) * positions_occupied) )
-        
+            if (mean - 0.5*(standard_devation) <= new_report and
+                mean + 0.5*(standard_devation) >= new_report):
+                weight = 0.6
+                positions_occupied = round( (weight * new_report) + 
+                                            ((1 - weight) * positions_occupied) )
+            
+                cur.execute(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
+                mysql.connection.commit()
+                cur.close()
+
+                return jsonify({"message": "Crowd report submitted successfully"}), 201
+            else:
+                cur.close()
+                return jsonify({"message": "Crowd Report taken, too much variance"}), 400
+        else:
             cur.execute(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
+            print(previous_reports)
+            print(new_report)
+            print(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
             mysql.connection.commit()
             cur.close()
-
-            return jsonify({"message": "Crowd report submitted successfully"}), 201
-        else:
-            cur.close()
-            return jsonify({"message": "Crowd Report taken, too much variance"}), 200
+            return jsonify({"message": "Crowd report submitted successfully "}), 201
     else:
-        cur.execute(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
-        print(previous_reports)
-        print(new_report)
-        print(f"UPDATE building SET positions_occupied = {new_report} WHERE name = \"{building_name}\"")
-        mysql.connection.commit()
-        cur.close()
-        return jsonify({"message": "Crowd report submitted successfully "}), 201
+        return jsonify({"message": "Crowd report discarded, reports are too frequent"}), 400
 
 
 
