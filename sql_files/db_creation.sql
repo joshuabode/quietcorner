@@ -15,7 +15,7 @@ CREATE TABLE user (
 --session_start and session_end are the start and end times the user is in the building for. used to make
 --changes to the positinos_occupied field in the buildings table
 
-CREATE TABLE start_of_session (
+CREATE TABLE session (
                                   session_id INT PRIMARY KEY AUTO_INCREMENT,
                                   username VARCHAR(20),
                                   building_id INT,
