@@ -1,11 +1,8 @@
 #----- work in progress -----#
 
 #simulates 2 poisson distributions for people entering and leaving the building
-#currently the mean of the poisson distributions are constant and are the same for both distributions
 
 #----- to work on -----#
-#make the lambda value vary against time
-#make lambda vary based on how full the building is
 #keep track of number of people in the building (based on card scanners)
 
 
@@ -15,6 +12,7 @@ import asyncio
 import time
 from datetime import datetime, timedelta
 import sys
+import math
 
 #calculates the time since 8am in seconds
 #we assume the building opens at 8am and closes at 6pm
@@ -24,13 +22,28 @@ def seconds_since_8am():
 
     return (current_time - today_8am).total_seconds()
 
-#for now our lambda functions arent very useful
-#the lambda value is the average constant rate of people entering/leaving per second
 def lambda_function_enter(time):
-    return 1
+    crowd_level = people_count/building_capacity
+
+    multiplier = 1 - crowd_level + 0.000001
+
+    lambda_value = multiplier*(0.05 + 0.5*(np.sin((time + 1800)/(3600/math.pi)))**20)
+    print("enter lambda = " + str(lambda_value))
+    print("people in building: " + str(people_count))
+
+    return lambda_value
 
 def lambda_function_leave(time):
-    return 1
+    crowd_level = people_count/building_capacity
+
+    multiplier = crowd_level + 0.000001
+
+    lambda_value = multiplier*(0.05 + 0.5*(np.sin((time + 1800)/(3600/math.pi)))**20)
+    print("leave lambda = " + str(lambda_value))
+    print("people in building: " + str(people_count))
+
+
+    return lambda_value
 
 
 #simulates a real time poisson distribution using a lambda value (the average constant rate)
@@ -59,5 +72,8 @@ async def main():
         poisson("enter building", lambda_function_enter),
         poisson("leave building", lambda_function_leave)
     )
+
+building_capacity = 2000
+people_count = 2000
 
 asyncio.run(main())
