@@ -17,6 +17,8 @@ import {
     SidebarInset,
     SidebarProvider,
 } from "@/components/ui/sidebar";
+import Overlay from 'ol/Overlay';
+
 
 type Location = {
     building_id: number;
@@ -38,6 +40,10 @@ function MapLayout() {
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
     const mapElement = useRef<HTMLDivElement>(null);
     const [vectorSource, setVectorSource] = useState(new VectorSource());
+    const popupElement = useRef<HTMLDivElement>(null);
+    const [popupShown,setpopupShown] = useState(false);
+    const [popup, setPopup] = useState<Overlay | null>(null);
+    const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
 
     useEffect(() => {
@@ -65,66 +71,8 @@ function MapLayout() {
     }, []);
 
 
+
     useEffect(() => {
-        const view = new View({
-            center: [0, 0],
-            zoom: 2,
-        });
-
-        const geolocation = new Geolocation({
-            // enableHighAccuracy must be set to true to have the heading value.
-            trackingOptions: {
-                enableHighAccuracy: true,
-            },
-            projection: view.getProjection(),
-        });
-
-        function el(id) {
-            return document.getElementById(id);
-        }
-
-        el('track').addEventListener('change', function () {
-            geolocation.setTracking(this.checked);
-        });
-
-// update the HTML page when the position changes.
-        geolocation.on('change', function () {
-            el('accuracy').innerText = geolocation.getAccuracy() + ' [m]';
-            el('altitude').innerText = geolocation.getAltitude() + ' [m]';
-            el('altitudeAccuracy').innerText = geolocation.getAltitudeAccuracy() + ' [m]';
-            el('heading').innerText = geolocation.getHeading() + ' [rad]';
-            el('speed').innerText = geolocation.getSpeed() + ' [m/s]';
-        });
-
-
-        const accuracyFeature = new Feature();
-        geolocation.on('change:accuracyGeometry', function () {
-            accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
-        });
-
-
-        const positionFeature = new Feature();
-        positionFeature.setStyle(
-            new Style({
-                image: new Circle({
-                    radius: 6,
-                    fill: new Fill({
-                        color: '#3399CC',
-                    }),
-                    stroke: new Stroke({
-                        color: '#fff',
-                        width: 2,
-                    }),
-                }),
-            }),
-        );
-
-        geolocation.on('change:position', function () {
-            const coordinates = geolocation.getPosition();
-            positionFeature.setGeometry(coordinates ? new Point(coordinates) : null);
-        });
-
-
         if (!map) {
             const initialMap = new Map({
                 target: mapElement.current!,
@@ -144,8 +92,30 @@ function MapLayout() {
 
 
             setMap(initialMap);
+            const newPopup = new Overlay({
+                element: popupElement.current!,
+                positioning: "bottom-center",
+                offset: [0, -10],
+                autoPan: true,
+                autoPanAnimation: {
+                    duration: 250,
+                },
+            })
+
+            initialMap.addOverlay(newPopup)
+            setPopup(newPopup)
+
+            initialMap.on("click", (event) => {
+                const feature = initialMap.forEachFeatureAtPixel(event.pixel, (feature) => feature)
+                if (feature) {
+                    setSelectedLocation(feature.get("name"))
+                } else {
+                    setSelectedLocation(null)
+                    setExpandedCard(null)
+                }
+            })
         }
-    }, []);
+    }, [map, vectorSource])
 
     useEffect(() => {
         if (!map) return;
@@ -164,8 +134,26 @@ function MapLayout() {
             feature.setStyle(style);
 
             vectorSource.addFeature(feature);
-        });
-    }, [locations]);
+
+        })
+    }, [locations, map, vectorSource])
+    useEffect(() => {
+        if (map && popup && expandedCard) {
+            const location = locations.find((l) => l.name === expandedCard)
+            if (location) {
+                const coordinates = fromLonLat([location.longitude, location.latitude])
+                popup.setPosition(coordinates)
+                map.getView().animate({
+                    center: coordinates,
+                    zoom: 18,
+                    duration: 800,
+                })
+            }
+        } else if (popup) {
+            popup.setPosition(undefined)
+        }
+    }, [expandedCard, locations, map, popup])
+
 
     const authAPI = async () => {
         try {
@@ -191,54 +179,61 @@ function MapLayout() {
 
 
     
-    const initializeMap = () => {
-        const initialMap = new Map({
-            target: mapElement.current!,
-            layers: [
-                new TileLayer({
-                    source: new OSM(),
-                }),
-            ],
-            view: new View({
-                center: fromLonLat([-2.2339, 53.4668]), // Manchester city center
-                zoom: 15,
-            }),
-        });
-
-        const vectorSource = new VectorSource();
-        const vectorLayer = new VectorLayer({
-            source: vectorSource,
-        });
-
-        initialMap.addLayer(vectorLayer);
-
-        locations.forEach((location) => {
-            const feature = new Feature({
-                geometry: new Point(fromLonLat([location.longitude, location.latitude])),
-                name: location.building_name,
-                population: location.max_capacity,
-            });
-
-            const style = createFeatureStyle(location.max_capacity, location.positions_occupied);
-            feature.setStyle(style);
-
-            vectorSource.addFeature(feature);
-        });
-
-
-
-        initialMap.on('click', (event) => {
-            const feature = initialMap.forEachFeatureAtPixel(event.pixel, (feature) => feature);
-            if (feature) {
-                const coordinates = (feature.getGeometry() as Point).getCoordinates();
-                setSelectedLocation(feature.get('name'));
-            } else {
-                setSelectedLocation(null);
-            }
-        });
-
-        setMap(initialMap);
-    };
+    // const initializeMap = () => {
+    //     const initialMap = new Map({
+    //         target: mapElement.current!,
+    //         layers: [
+    //             new TileLayer({
+    //                 source: new OSM(),
+    //             }),
+    //         ],
+    //         view: new View({
+    //             center: fromLonLat([-2.2339, 53.4668]), // Manchester city center
+    //             zoom: 15,
+    //         }),
+    //     });
+    //
+    //     const vectorSource = new VectorSource();
+    //     const vectorLayer = new VectorLayer({
+    //         source: vectorSource,
+    //     });
+    //
+    //     initialMap.addLayer(vectorLayer);
+    //
+    //     locations.forEach((location) => {
+    //         const feature = new Feature({
+    //             geometry: new Point(fromLonLat([location.longitude, location.latitude])),
+    //             name: location.name,
+    //             population: location.max_capacity,
+    //         });
+    //
+    //         const style = createFeatureStyle(location.max_capacity, location.positions_occupied);
+    //         feature.setStyle(style);
+    //
+    //         vectorSource.addFeature(feature);
+    //     });
+    //     const popup = new Overlay({
+    //         element: popupElement.current!,
+    //         positioning: 'bottom-center',
+    //         offset: [0, -10],
+    //     });
+    //     initialMap.addOverlay(popup);
+    //
+    //
+    //     initialMap.on('click', (event) => {
+    //         const feature = initialMap.forEachFeatureAtPixel(event.pixel, (feature) => feature);
+    //         if (feature) {
+    //             const coordinates = (feature.getGeometry() as Point).getCoordinates();
+    //             popup.setPosition(coordinates);
+    //             setSelectedLocation(feature.get('name'));
+    //         } else {
+    //             popup.setPosition(undefined);
+    //             setSelectedLocation(null);
+    //         }
+    //     });
+    //
+    //     setMap(initialMap);
+    // };
 
     const createFeatureStyle = (capacity: number, population: number) => {
         console.log(population/capacity)
@@ -254,16 +249,14 @@ function MapLayout() {
         });
     };
 
-    const handleLocationSelect = (name: string, coordinates: [number, number]) => {
-        if (map) {
-            map.getView().animate({
-                center: fromLonLat([coordinates[1], coordinates[0]]),
-                zoom: 18,
-                duration: 1000,
-            });
-            setSelectedLocation(name);
-        }
-    };
+    const handleLocationSelect = (name: string) => {
+        setSelectedLocation(name)
+        setExpandedCard(name)
+    }
+
+    const handleCardClose = () => {
+        setExpandedCard(null)
+    }
 
 
     if (authenticated) {return (
@@ -271,29 +264,31 @@ function MapLayout() {
             <SidebarProvider
                 style={
                     {
-                        "--sidebar-width": "400px",
+                        "--sidebar-width": "800px",
                     } as React.CSSProperties
                 }
             >
                 <AppSidebar onLocationSelect={handleLocationSelect} />
                 <SidebarInset>
-                    <div style={{height:'100vh', width:'100%'}} className="flex flex-1 flex-col" ref={mapElement}>
-                    {/*        {selectedLocation && (*/}
-                    {/*            <div className="bg-white p-2 rounded shadow">*/}
-                    {/*                <h3 className="font-bold">{selectedLocation}</h3>*/}
-                    {/*                <p>Crowd Level: {*/}
-                    {/*                    (() => {*/}
-                    {/*                        const location = locations.find(l => l.name === selectedLocation);*/}
-                    {/*                        if (location) {*/}
-                    {/*                            if (location.population > 500) return 'High';*/}
-                    {/*                            if (location.population < 200) return 'Low';*/}
-                    {/*                            return 'Medium';*/}
-                    {/*                        }*/}
-                    {/*                        return 'Unknown';*/}
-                    {/*                    })()*/}
-                    {/*                }</p>*/}
-                    {/*            </div>*/}
-                    {/*        )}*/}
+                    <div style={{height: '100vh', width: '100%'}} className="flex flex-1 flex-col" ref={mapElement}>
+                        <div ref={popupElement} className="ol-popup">
+                            {selectedLocation && (
+                                <div className="bg-white p-2 rounded shadow">
+                                    <h3 className="font-bold">{selectedLocation}</h3>
+                                    <p>Crowd Level: {
+                                        (() => {
+                                            const location = locations.find(l => l.name === selectedLocation);
+                                            if (location) {
+                                                if (location.positions_occupied > 500) return 'High';
+                                                if (location.positions_occupied < 200) return 'Low';
+                                                return 'Medium';
+                                            }
+                                            return 'Unknown';
+                                        })()
+                                    }</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </SidebarInset>
             </SidebarProvider>

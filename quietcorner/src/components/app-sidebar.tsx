@@ -1,21 +1,19 @@
 "use client"
 
-import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
-import { addMinutes, format, parse, startOfDay } from 'date-fns'
-import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent, useCallback } from "react"
+import { format } from "date-fns"
+import { BarChart, Calendar, ChevronDown, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 
-
-import { Button } from '@/components/ui/button'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import Modal from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from "@/components/ui/button"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import Modal from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
     Sidebar,
     SidebarContent,
@@ -26,21 +24,22 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-} from '@/components/ui/sidebar'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { eventNames } from 'process'
-import { read } from 'fs'
+} from "@/components/ui/sidebar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+
 
 type Location = {
-    building_id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-    opening_hours: string;
-    positions_occupied: string;  // Added this field
-};
-
-
+    building_id: string
+    name: string
+    latitude: number
+    longitude: number
+    opening_hours: string
+    positions_occupied: string // Added this field
+    facility_1: string
+    facility_2: string
+    facility_3: string
+}
 
 type TimeBlock = {
     start: Date | null
@@ -54,15 +53,17 @@ type AppSidebarProps = {
     onLocationSelect: (name: string, coordinates: [number, number]) => void
 }
 
-
 export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
+
     const [locations, setLocations] = useState<Location[]>([])
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
     const [studyMatches, setStudyMatches] = useState<any[]>([])
     const [icsFile, setIcsFile] = useState("")
-    const [modal, setModal] = useState(false);
-    const [data, setData] = useState("");
+    const [modal, setModal] = useState(false)
+    const [data, setData] = useState("")
+    const [previousPopup, setpreviousPopup] = useState(false)
+    const [currentPopup, setcurrentPopup] = useState(false)
 
     const icsInput = useRef<HTMLInputElement | null>(null)
     const studyStart = useRef<HTMLInputElement | null>(null)
@@ -76,56 +77,72 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
     useEffect(() => {
         //send icsFile to server for database storage
-    } 
-    , [icsFile, date])
-
+    }, [icsFile, date])
 
     const [state, setState] = useState<{
-        locations: Location[];
-        isLoading: boolean;
+        locations: Location[]
+        isLoading: boolean
     }>({
         locations: [],
-        isLoading: true
-    });
+        isLoading: true,
+    })
 
     // Move the fetch logic outside of render
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const locationsResponse = await fetch("/api/locations");
+                const locationsResponse = await fetch("/api/locations")
                 if (!locationsResponse.ok) {
-                    throw new Error("Failed to fetch locations");
+                    throw new Error("Failed to fetch locations")
                 }
-                const locationsData = await locationsResponse.json();
+                const locationsData = await locationsResponse.json()
 
                 setState({
                     locations: locationsData,
-                    isLoading: false
-                });
+                    isLoading: false,
+                })
             } catch (error) {
-                console.error("Error fetching data:", error);
-                setState(prev => ({ ...prev, isLoading: true }));
+                console.error("Error fetching data:", error)
+                setState((prev) => ({ ...prev, isLoading: true }))
             }
-        };
+        }
 
-        fetchData();
+        fetchData()
 
-        const intervalId = setInterval(fetchData, 2000); // Update every 2 seconds
+        const intervalId = setInterval(fetchData, 2000) // Update every 2 seconds
 
-        return () => clearInterval(intervalId);
-    }, []);
+        return () => clearInterval(intervalId)
+    }, [])
 
-    const handleLocationSelect = useCallback((name: string, coordinates: [number, number]) => {
-        onLocationSelect(name, coordinates);
-    }, [onLocationSelect]);
+    const handleLocationSelect = useCallback(
+        (name: string, coordinates: [number, number], buildingId: string) => {
+            onLocationSelect(name, coordinates)
+        },
+        [onLocationSelect],
+    )
 
     const getStatusColor = (positions_occupied: string) => {
-        const occupancy = parseInt(positions_occupied);
-        if (isNaN(occupancy)) return "text-gray-500";
-        if (occupancy >= 500) return "text-red-500";
-        if (occupancy >= 300) return "text-orange-500";
-        return "text-green-500";
-    };
+        const occupancy = Number.parseFloat(positions_occupied)
+        if (isNaN(occupancy)) return "text-gray-500"
+        if (occupancy >= 0.7) return "text-red-500"
+        if (occupancy >= 0.4) return "text-orange-500"
+        return "text-green-500"
+    }
+    const getStatusBkgd = (positions_occupied: string) => {
+        const occupancy = Number.parseFloat(positions_occupied)
+        if (isNaN(occupancy)) return "bg-gray-100"
+        if (occupancy >= 0.7) return "bg-red-100"
+        if (occupancy >= 0.4) return "bg-orange-100"
+        return "bg-green-100"
+    }
+
+    const getStatusText = (positions_occupied: string) => {
+        const occupancy = Number.parseFloat(positions_occupied)
+        if (isNaN(occupancy)) return "null"
+        if (occupancy >= 0.7) return "High"
+        if (occupancy >= 0.4) return "Medium"
+        return "Low"
+    }
 
     const handleReportSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -195,25 +212,25 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     //     }
     // }
 
-        
-    const addCustomTimeBlock = (block : TimeBlock) => {
+    const addCustomTimeBlock = (block: TimeBlock) => {
         // If the block argument is passed, then add that as the block.
         // Otherwise, create a block from the modal form
-        let isBlock = Boolean(block.start && block.end)
-        const newBlock: TimeBlock = isBlock ? block :
-        {
-            start: new Date(studyStart.current?.value ?? ""),
-            end: new Date(studyEnd.current?.value ?? ""),
-            title: studyTitle.current?.value ?? "",
-            location: studyLocation.current?.value ?? "",
-            timetabled: false
-        }
-        setTimeBlocks(timeBlocks => [...timeBlocks, newBlock])
+        const isBlock = Boolean(block.start && block.end)
+        const newBlock: TimeBlock = isBlock
+            ? block
+            : {
+                start: new Date(studyStart.current?.value ?? ""),
+                end: new Date(studyEnd.current?.value ?? ""),
+                title: studyTitle.current?.value ?? "",
+                location: studyLocation.current?.value ?? "",
+                timetabled: false,
+            }
+        setTimeBlocks((timeBlocks) => [...timeBlocks, newBlock])
 
         setModal(false)
-        let storedBlocks : string | null = localStorage.getItem("customStudyBlocks")
+        const storedBlocks: string | null = localStorage.getItem("customStudyBlocks")
         if (storedBlocks && !isBlock) {
-            let customBlocks : TimeBlock[] = JSON.parse(storedBlocks)
+            const customBlocks: TimeBlock[] = JSON.parse(storedBlocks)
             localStorage.setItem("customStudyBlocks", JSON.stringify([...customBlocks, newBlock]))
         } else if (!isBlock) {
             localStorage.setItem("customStudyBlocks", JSON.stringify([newBlock]))
@@ -221,10 +238,10 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     }
 
     const restoreCustomTimeBlocks = () => {
-        let storedBlocks : string | null = localStorage.getItem("customStudyBlocks")
+        const storedBlocks: string | null = localStorage.getItem("customStudyBlocks")
         if (storedBlocks) {
-            let customBlocks : TimeBlock[] = JSON.parse(storedBlocks)
-            for (let i in customBlocks) {
+            const customBlocks: TimeBlock[] = JSON.parse(storedBlocks)
+            for (const i in customBlocks) {
                 if (customBlocks[i].start) {
                     customBlocks[i].start = new Date(customBlocks[i].start)
                 }
@@ -238,44 +255,54 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
     const addTimeBlocks = (icsData: string) => {
         const newBlocks: TimeBlock[] = []
-        let block: TimeBlock = {start: new Date(), end: new Date(), title: "", location: "", timetabled: true}
+        let block: TimeBlock = { start: new Date(), end: new Date(), title: "", location: "", timetabled: true }
         for (const line of icsData.split("\n")) {
             if (line.startsWith("BEGIN:VEVENT")) {
-                block = {start: null, end: null, title: "", location: "", timetabled: true}
+                block = { start: null, end: null, title: "", location: "", timetabled: true }
             } else if (line.startsWith("DTSTART:")) {
                 let str = line.slice("DTSTART:".length)
-                str = str.slice(0,4) + '-' 
-                            + str.slice(4,6) + '-' 
-                            + str.slice(6,11) + ':'
-                            + str.slice(11, 13) + ':'
-                            + str.slice(13, 15) + '.000Z'
+                str =
+                    str.slice(0, 4) +
+                    "-" +
+                    str.slice(4, 6) +
+                    "-" +
+                    str.slice(6, 11) +
+                    ":" +
+                    str.slice(11, 13) +
+                    ":" +
+                    str.slice(13, 15) +
+                    ".000Z"
                 block.start = new Date(str)
             } else if (line.startsWith("DTEND:")) {
                 let str = line.slice("DTEND:".length)
-                str = str.slice(0,4) + '-' 
-                            + str.slice(4,6) + '-' 
-                            + str.slice(6,11) + ':'
-                            + str.slice(11, 13) + ':'
-                            + str.slice(13, 15) + '.000Z'
+                str =
+                    str.slice(0, 4) +
+                    "-" +
+                    str.slice(4, 6) +
+                    "-" +
+                    str.slice(6, 11) +
+                    ":" +
+                    str.slice(11, 13) +
+                    ":" +
+                    str.slice(13, 15) +
+                    ".000Z"
                 block.end = new Date(str)
             } else if (line.startsWith("SUMMARY:")) {
                 block.title = line.slice("SUMMARY:".length)
             } else if (line.startsWith("LOCATION:")) {
-                let str = line.slice("LOCATION:".length)
+                const str = line.slice("LOCATION:".length)
                 block.location = str
             } else if (line.startsWith("END:VEVENT")) {
                 newBlocks.push(block)
             }
         }
-            
+
         setTimeBlocks(timeBlocks.concat(newBlocks))
     }
 
     const handleIcsClick = () => {
-        if (icsInput.current)
-            icsInput.current.click()
-        else
-            return
+        if (icsInput.current) icsInput.current.click()
+        else return
     }
 
     const handleIcsFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -288,22 +315,18 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                     setIcsFile(reader.result)
                     addTimeBlocks(reader.result)
                 }
-
             }
         }
     }
-
 
     const handleLocationClick = (location: Location) => {
         onLocationSelect(location.name, [location.latitude, location.longitude])
     }
 
-    const courses = ['COMP12111', 'COMP11120', 'COMP15111', 'COMP16321']
-
 
 
     return (
-        <Sidebar className="w-[400px]">
+        <Sidebar className="w-[800px]">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -319,66 +342,88 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                     <div className="flex h-full">
                         <TabsList className="flex flex-col h-full space-y-2 bg-muted p-2">
                             <TabsTrigger value="crowd-levels" className="justify-start">
-                                <Users className="mr-2 h-4 w-4" />
+                                <Users className="mr-3 h-6 w-6" />
+                                <div>Crowd Levels</div>
                             </TabsTrigger>
                             <TabsTrigger value="report" className="justify-start">
-                                <BarChart className="mr-2 h-4 w-4" />
+                                <BarChart className="mr-3 h-6 w-6"/>
+                                <div>Report Crowd Level</div>
                             </TabsTrigger>
                             <TabsTrigger value="schedule" className="justify-start">
-                                <Calendar className="mr-2 h-4 w-4" />
-
+                                <Calendar className="mr-3 h-6 w-6"/>
+                                <div>Schedule</div>
                             </TabsTrigger>
                             <TabsTrigger value="study-match" className="justify-start">
-                                <BookOpen className="mr-2 h-4 w-4" />
-
+                                <BookOpen className="mr-3 h-6 w-6"/>
+                                <div>Study Match</div>
                             </TabsTrigger>
                         </TabsList>
                         <div className="flex-1 p-4">
                             <TabsContent value="crowd-levels">
                                 <SidebarGroup>
-                                    <SidebarGroupLabel>Current Crowd Levels</SidebarGroupLabel>
+                                    <SidebarGroupLabel className="text-lg">Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        {state.isLoading ? (<>
-                                            <p className="text-sm text-gray-500">Loading...</p>
-                                        </>
-                                   
+                                        {state.isLoading ? (
+                                            <>
+                                                <p className="text-sm text-gray-500">Loading...</p>
+                                            </>
                                         ) : (
                                             state.locations.map((location) => (
-                                                <Collapsible key={location.building_id}>
+                                                <Collapsible
+                                                    key={location.building_id}
+                                                    onOpenChange={(open) => {
+                                                        if (open) {
+                                                            setTimeout(() => {
+                                                                const element = document.getElementById(`collapsible-${location.building_id}`)
+                                                                element?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                                                            }, 100)
+                                                        }
+                                                    }}
+                                                >
                                                     <Card
+                                                        id={`collapsible-${location.building_id}`}
                                                         className="mb-4 cursor-pointer"
-                                                        onClick={() => handleLocationSelect(location.name, [location.latitude, location.longitude])}
+                                                        onClick={() =>
+                                                            handleLocationSelect(
+                                                                location.name,
+                                                                [location.latitude, location.longitude],
+                                                                location.building_id,
+                                                            )
+                                                        }
                                                     >
                                                         <CollapsibleTrigger className="w-full">
-                                                            <CardHeader className="pb-2 flex justify-between items-center">
-                                                                <CardTitle>{location.name}</CardTitle>
-                                                                <div className={`font-bold ${getStatusColor(location.positions_occupied)}`}>
-                                                                    {location.positions_occupied}
+                                                            <CardHeader>
+                                                                <div  className="pb-0 flex flex-row">
+                                                                <CardTitle>{location.name || "Unnamed Location"}</CardTitle>
+                                                                    <ChevronDown className="h-4 w-4" />
+                                                                    {/* Debug: Add a fallback background color */}
+                                                                    <div className={`absolute right-4 px-3 py-3 rounded-md ${getStatusBkgd(location.positions_occupied/location.max_capacity)} font-bold mr-2 ${getStatusColor(location.positions_occupied/location.max_capacity)}`}>
+                                                                        {getStatusText(location.positions_occupied/location.max_capacity)}
+                                                                    </div>
                                                                 </div>
-                                                                <ChevronDown className="h-4 w-4 ml-2" />
+                                                                <div className="flex flex-row">
+                                                                    Occupancy rate: {location.positions_occupied/location.max_capacity *100}%
+                                                                </div>
                                                             </CardHeader>
                                                         </CollapsibleTrigger>
                                                         <CollapsibleContent className="px-4 pb-4">
                                                             <div className="mt-2 space-y-2">
                                                                 <div className="flex items-center">
-                                                                    <Clock className="mr-2 h-4 w-4"/>
-                                                                    <span
-                                                                        className="font-semibold">Opening Hours: </span>
+                                                                    <Clock className="mr-2 h-4 w-4" />
+                                                                    <span className={`font-semibold  `}>Opening Hours: </span>
                                                                     <span> {location.opening_hours}</span>
                                                                 </div>
                                                                 <div className="flex items-start">
-                                                                    <Wifi className="mr-2 h-4 w-4 mt-1"/>
+                                                                    <Wifi className="mr-2 h-4 w-4 mt-1" />
                                                                     <div>
-                                                                        <span
-                                                                            className="font-semibold">Facilities:</span>
+                                                                        <span className="font-semibold">Facilities:</span>
                                                                         <ul className="list-disc list-inside pl-4">
-                                                                            <li>{location.facility_1}</li>
-                                                                            <li>{location.facility_2}</li>
-                                                                            <li>{location.facility_3}</li>
-                                                                                </ul>
+                                                                            <li>☕{location.facility_1}</li>
+                                                                            <li>📖{location.facility_2}</li>
+                                                                            <li>🤔{location.facility_3}</li>
+                                                                        </ul>
                                                                     </div>
                                                                 </div>
-
                                                             </div>
                                                         </CollapsibleContent>
                                                     </Card>
@@ -397,12 +442,11 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 <Label htmlFor="location">Location</Label>
                                                 <Select name="location">
                                                     <SelectTrigger id="location">
-                                                        <SelectValue placeholder="Select location"/>
+                                                        <SelectValue placeholder="Select location" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {state.locations.map((location) => (
-                                                            <SelectItem key={location.building_id}
-                                                                        value={location.name}>
+                                                            <SelectItem key={location.building_id} value={location.name}>
                                                                 {location.name}
                                                             </SelectItem>
                                                         ))}
@@ -425,8 +469,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                             </div>
                                             <div>
                                                 <Label htmlFor="comments">Comments (optional)</Label>
-                                                <Input id="comments" name="comments"
-                                                       placeholder="Any additional information..."/>
+                                                <Input id="comments" name="comments" placeholder="Any additional information..." />
                                             </div>
                                             <Button type="submit">Submit Report</Button>
                                         </form>
@@ -438,7 +481,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                     <SidebarGroupLabel>Schedule</SidebarGroupLabel>
                                     <SidebarGroupContent className="h-full">
                                         <div className="flex flex-col h-full">
-                                        <CalendarComponent
+                                            <CalendarComponent
                                                 mode="single"
                                                 selected={date}
                                                 onSelect={setDate}
@@ -447,101 +490,82 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                             <div className="flex-1 overflow-hidden">
                                                 <Label>Timetable for {date?.toDateString()}</Label>
                                                 <ScrollArea className="h-[300px] mt-2 border rounded-md">
-                                                    <div className="relative w-full" style={{ height: '1440px' }}>
-                                                    {Array.from({ length: 24 }).map((_, i) => (
+                                                    <div className="relative w-full" style={{ height: "1440px" }}>
+                                                        {Array.from({ length: 24 }).map((_, i) => (
                                                             <div
                                                                 key={i}
                                                                 className="absolute left-0 right-0 border-t border-gray-200 text-xs text-gray-500 pl-1"
                                                                 style={{ top: `${(i / 24) * 100}%` }}
                                                             >
-                                                                {`${i.toString().padStart(2, '0')}:00`}
+                                                                {`${i.toString().padStart(2, "0")}:00`}
                                                             </div>
                                                         ))}
-                                                        {timeBlocks.map((block, index) => { 
+                                                        {timeBlocks.map((block, index) => {
                                                             if (block.start?.toDateString() === date?.toDateString()) {
-                                                                return(
+                                                                return (
                                                                     <div
                                                                         id={index}
-                                                                        className={`absolute left-0 right-0 ${block.timetabled ? 'bg-blue-600/30' : 'bg-red-500/30'} rounded p-2 text-xs`}
+                                                                        className={`absolute left-0 right-0 ${block.timetabled ? "bg-blue-600/30" : "bg-red-500/30"} rounded p-2 text-xs`}
                                                                         style={{
-                                                                            top: `${(block.start.getHours() * 60 + block.start.getMinutes()) / 1440 * 100}%`,
-                                                                            height: `${((block.end.getHours() - block.start.getHours()) * 60 + (block.end.getMinutes() - block.start.getMinutes())) / 1440 * 100}%`,
+                                                                            top: `${((block.start.getHours() * 60 + block.start.getMinutes()) / 1440) * 100}%`,
+                                                                            height: `${(((block.end.getHours() - block.start.getHours()) * 60 + (block.end.getMinutes() - block.start.getMinutes())) / 1440) * 100}%`,
                                                                         }}
                                                                     >
                                                                         <strong>{block.title}</strong>
                                                                         <br />
                                                                         {block.location}
                                                                         <br />
-                                                                        {format(block.start, 'HH:mm')} - {format(block.end, 'HH:mm')}
+                                                                        {format(block.start, "HH:mm")} - {format(block.end, "HH:mm")}
                                                                     </div>
-                                                            )}
-                                                            })}
-                                                
+                                                                )
+                                                            }
+                                                        })}
                                                     </div>
                                                 </ScrollArea>
                                             </div>
                                             <div className="flex justify-between mt-4">
-                                            
                                                 <Modal openModal={modal} closeModal={() => setModal(false)}>
-                                                    
                                                     <div>
-                                                    <Label htmlFor="start-time">
-                                                        Start:
-                                                    </Label>
+                                                        <Label htmlFor="start-time">Start:</Label>
 
-                                                    <Input
-                                                    type="datetime-local"
-                                                    id="start-time"
-                                                    name="start"
-                                                    ref={studyStart}
-                                                    />  
+                                                        <Input type="datetime-local" id="start-time" name="start" ref={studyStart} />
                                                     </div>
                                                     <div>
-                                                    <Label htmlFor="end-time">
-                                                        Finish:
-                                                    </Label>
-                                                    <Input
-                                                    type="datetime-local"
-                                                    id="end-time"
-                                                    name="end"
-                                                    ref={studyEnd}
-                                                    />
+                                                        <Label htmlFor="end-time">Finish:</Label>
+                                                        <Input type="datetime-local" id="end-time" name="end" ref={studyEnd} />
                                                     </div>
                                                     <div>
-                                                        <Label htmlFor="title">
-                                                            Label:
-                                                        </Label>
-                                                        <Input type="text"
-                                                        ref={studyTitle}
-                                                        />
+                                                        <Label htmlFor="title">Label:</Label>
+                                                        <Input type="text" ref={studyTitle} />
                                                     </div>
                                                     <div>
-                                                        <Label htmlFor="location">
-                                                            Location:
-                                                        </Label>
-                                        
-                                                        <select name="location" ref={studyLocation} className='border border-gray-300 text-gray-900 rounded-lg h-12'>
+                                                        <Label htmlFor="location">Location:</Label>
+
+                                                        <select
+                                                            name="location"
+                                                            ref={studyLocation}
+                                                            className="border border-gray-300 text-gray-900 rounded-lg h-12"
+                                                        >
                                                             <option value="Main Library">Main Library</option>
                                                             <option value="Stopford Building Library">Stopford Building Library</option>
                                                             <option value="Alan Gilbert Learning Commons">Alan Gilbert Learning Commons</option>
-
                                                         </select>
                                                     </div>
-                                                    <Button onClick={addCustomTimeBlock}>Add</Button>   
+                                                    <Button onClick={addCustomTimeBlock}>Add</Button>
                                                 </Modal>
                                                 <Button onClick={() => setModal(true)}>
                                                     <Plus className="mr-2 h-4 w-4" /> Add Time Block
                                                 </Button>
                                                 <div>
                                                     <form action="">
-                                                         <input
-                                                        type="file"
-                                                        id="ics-upload"
-                                                        accept=".ics"
-                                                        className="sr-only"
-                                                        ref={icsInput}
-                                                        onChange={handleIcsFile}
-                                                    />
+                                                        <input
+                                                            type="file"
+                                                            id="ics-upload"
+                                                            accept=".ics"
+                                                            className="sr-only"
+                                                            ref={icsInput}
+                                                            onChange={handleIcsFile}
+                                                        />
                                                     </form>
                                                     <Button onClick={handleIcsClick}>
                                                         <Upload className="mr-2 h-4 w-4" /> Upload .ics
@@ -595,7 +619,9 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                     ))}
                                                 </ul>
                                             ) : (
-                                                <p className="text-sm text-gray-500">No matches found yet. Submit the form to find study partners.</p>
+                                                <p className="text-sm text-gray-500">
+                                                    No matches found yet. Submit the form to find study partners.
+                                                </p>
                                             )}
                                         </div>
                                     </SidebarGroupContent>
@@ -606,4 +632,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 </Tabs>
             </SidebarContent>
         </Sidebar>
-    )};
+    )
+}
+
