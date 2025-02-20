@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { eventNames } from 'process'
 import { read } from 'fs'
 import { timeStamp } from 'console'
+import { CrowdLevelCardList } from '@/components/CrowdLevelCardList'
 
 type Location = {
     building_id: string
@@ -381,68 +382,74 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 <p className="text-sm text-gray-500">Loading...</p>
                                             </>
                                         ) : (
-                                            state.locations.map((location) => (
-                                                <Collapsible
-                                                    key={location.building_id}
-                                                    onOpenChange={(open) => {
-                                                        if (open) {
-                                                            setTimeout(() => {
-                                                                const element = document.getElementById(`collapsible-${location.building_id}`)
-                                                                element?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-                                                            }, 100)
-                                                        }
-                                                    }}
-                                                >
-                                                    <Card
-                                                        id={`collapsible-${location.building_id}`}
-                                                        className="mb-4 cursor-pointer"
-                                                        onClick={() =>
-                                                            handleLocationSelect(
-                                                                location.name,
-                                                                [location.latitude, location.longitude],
-                                                                location.building_id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <CollapsibleTrigger className="w-full">
-                                                            <CardHeader>
-                                                                <div  className="pb-0 flex flex-row">
-                                                                <CardTitle>{location.name || "Unnamed Location"}</CardTitle>
-                                                                    <ChevronDown className="h-4 w-4" />
-                                                                    {/* Debug: Add a fallback background color */}
-                                                                    <div className={`absolute right-4 px-3 py-3 rounded-md ${getStatusBkgd(location.positions_occupied/location.max_capacity)} font-bold mr-2 ${getStatusColor(location.positions_occupied/location.max_capacity)}`}>
-                                                                        {getStatusText(location.positions_occupied/location.max_capacity)}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex flex-row">
-                                                                    Occupancy rate: {location.positions_occupied/location.max_capacity *100}%
-                                                                </div>
-                                                            </CardHeader>
-                                                        </CollapsibleTrigger>
-                                                        <CollapsibleContent className="px-4 pb-4">
-                                                            <div className="mt-2 space-y-2">
-                                                                <div className="flex items-center">
-                                                                    <Clock className="mr-2 h-4 w-4" />
-                                                                    <span className={`font-semibold  `}>Opening Hours: </span>
-                                                                    <span> {location.opening_hours}</span>
-                                                                </div>
-                                                                <div className="flex items-start">
-                                                                    <Wifi className="mr-2 h-4 w-4 mt-1" />
-                                                                    <div>
-                                                                        <span className="font-semibold">Facilities:</span>
-                                                                        <ul className="list-disc list-inside pl-4">
-                                                                            <li>☕{location.facility_1}</li>
-                                                                            <li>📖{location.facility_2}</li>
-                                                                            <li>🤔{location.facility_3}</li>
-                                                                        </ul>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </CollapsibleContent>
-                                                    </Card>
-                                                </Collapsible>
-                                            ))
-                                        )}
+                                                <div className="container mx-auto p-4">
+                                                    <h1 className="text-2xl font-bold mb-4">Locations</h1>
+                                                    <CrowdLevelCardList
+                                                        locations={state.locations}
+                                                        handleLocationSelect={handleLocationSelect}
+                                                    />
+                                                </div>
+                                                // <Collapsible
+                                                //     key={location.building_id}
+                                                //     onOpenChange={(open) => {
+                                                //         if (open) {
+                                                //             setTimeout(() => {
+                                                //                 const element = document.getElementById(`collapsible-${location.building_id}`)
+                                                //                 element?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                                                //             }, 100)
+                                                //         }
+                                                //     }}
+                                                // >
+                                                //     <Card
+                                                //         id={`collapsible-${location.building_id}`}
+                                                //         className="mb-4 cursor-pointer"
+                                                //         onClick={() =>
+                                                //             handleLocationSelect(
+                                                //                 location.name,
+                                                //                 [location.latitude, location.longitude],
+                                                //                 location.building_id,
+                                                //             )
+                                                //         }
+                                                //     >
+                                                //         <CollapsibleTrigger className="w-full">
+                                                //             <CardHeader>
+                                                //                 <div  className="pb-0 flex flex-row">
+                                                //                 <CardTitle>{location.name || "Unnamed Location"}</CardTitle>
+                                                //                     <ChevronDown className="h-4 w-4" />
+                                                //                     {/* Debug: Add a fallback background color */}
+                                                //                     <div className={`absolute right-4 px-3 py-3 rounded-md ${getStatusBkgd(location.positions_occupied/location.max_capacity)} font-bold mr-2 ${getStatusColor(location.positions_occupied/location.max_capacity)}`}>
+                                                //                         {getStatusText(location.positions_occupied/location.max_capacity)}
+                                                //                     </div>
+                                                //                 </div>
+                                                //                 <div className="flex flex-row">
+                                                //                     Occupancy rate: {location.positions_occupied/location.max_capacity *100}%
+                                                //                 </div>
+                                                //             </CardHeader>
+                                                //         </CollapsibleTrigger>
+                                                //         <CollapsibleContent className="px-4 pb-4">
+                                                //             <div className="mt-2 space-y-2">
+                                                //                 <div className="flex items-center">
+                                                //                     <Clock className="mr-2 h-4 w-4" />
+                                                //                     <span className={`font-semibold  `}>Opening Hours: </span>
+                                                //                     <span> {location.opening_hours}</span>
+                                                //                 </div>
+                                                //                 <div className="flex items-start">
+                                                //                     <Wifi className="mr-2 h-4 w-4 mt-1" />
+                                                //                     <div>
+                                                //                         <span className="font-semibold">Facilities:</span>
+                                                //                         <ul className="list-disc list-inside pl-4">
+                                                //                             <li>☕{location.facility_1}</li>
+                                                //                             <li>📖{location.facility_2}</li>
+                                                //                             <li>🤔{location.facility_3}</li>
+                                                //                         </ul>
+                                                //                     </div>
+                                                //                 </div>
+                                                //             </div>
+                                                //         </CollapsibleContent>
+                                                //     </Card>
+                                                // </Collapsible>
+                                            )}
+
                                     </SidebarGroupContent>
                                 </SidebarGroup>
                             </TabsContent>

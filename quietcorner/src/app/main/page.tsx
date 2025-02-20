@@ -18,6 +18,9 @@ import {
     SidebarProvider,
 } from "@/components/ui/sidebar";
 import Overlay from 'ol/Overlay';
+import Geolocation from "ol/Geolocation"
+import { Button } from "@/components/ui/button"
+import { MapPin } from "lucide-react"
 
 
 type Location = {
@@ -44,6 +47,7 @@ function MapLayout() {
     const [popupShown,setpopupShown] = useState(false);
     const [popup, setPopup] = useState<Overlay | null>(null);
     const [expandedCard, setExpandedCard] = useState<string | null>(null);
+    const [geolocation, setGeolocation] = useState<Geolocation | null>(null);
 
 
     useEffect(() => {
@@ -61,7 +65,7 @@ function MapLayout() {
             }
         };
 
-        
+
         fetchData();
 
         const intervalId = setInterval(fetchData, 2000); // Update every 2s
@@ -114,6 +118,7 @@ function MapLayout() {
                     setExpandedCard(null)
                 }
             })
+
         }
     }, [map, vectorSource])
 
@@ -135,7 +140,60 @@ function MapLayout() {
 
             vectorSource.addFeature(feature);
 
+
         })
+        const geo = new Geolocation({
+            trackingOptions: {
+                enableHighAccuracy: true,
+            },
+            projection: map.getView().getProjection(),
+        })
+
+        geo.setTracking(true)
+
+        const positionFeature = new Feature()
+        positionFeature.setStyle(
+            new Style({
+                image: new Circle({
+                    radius: 12,
+                    fill: new Fill({
+                        color: "#3399CC",
+                    }),
+                    stroke: new Stroke({
+                        color: "#fff",
+                        width: 2,
+                    }),
+                }),
+            }),
+        )
+
+        vectorSource.addFeature(positionFeature)
+        let lastValidCoordinates = null
+
+        const updatePosition = () => {
+            const newCoordinates = geo.getPosition()
+            if (newCoordinates && Number.isFinite(newCoordinates[0])) {
+                lastValidCoordinates = newCoordinates
+                positionFeature.setGeometry(new Point(newCoordinates))
+            } else if (lastValidCoordinates) {
+                positionFeature.setGeometry(new Point(lastValidCoordinates))
+            }
+        }
+
+        geo.on("change:position", updatePosition)
+
+        const updateInterval = setInterval(updatePosition, 1000)
+
+        setGeolocation(geo)
+
+        return () => {
+            clearInterval(updateInterval)
+            geo.setTracking(false)
+            geo.un("change:position", updatePosition)
+        }
+
+
+        setGeolocation(geo)
     }, [locations, map, vectorSource])
     useEffect(() => {
         if (map && popup && expandedCard) {
@@ -162,7 +220,7 @@ function MapLayout() {
                 headers: {'Content-Type': 'application/json', 'Access-Control-Allow-Credentials': 'true'},
                 mode: 'cors',
                 credentials: 'include',
-                
+
             });
             const data = await authenticationResponse.json();
 
@@ -178,7 +236,7 @@ function MapLayout() {
     }
 
 
-    
+
     // const initializeMap = () => {
     //     const initialMap = new Map({
     //         target: mapElement.current!,
@@ -258,6 +316,19 @@ function MapLayout() {
         setExpandedCard(null)
     }
 
+    const handleCenterOnUser = () => {
+        if (geolocation && map) {
+            const coordinates = geolocation.getPosition()
+            if (coordinates) {
+                map.getView().animate({
+                    center: coordinates,
+                    zoom: 18,
+                    duration: 1000,
+                })
+            }
+        }
+    }
+
 
     if (authenticated) {return (
         <div>
@@ -270,7 +341,7 @@ function MapLayout() {
             >
                 <AppSidebar onLocationSelect={handleLocationSelect} />
                 <SidebarInset>
-                    <div style={{height: '100vh', width: '100%'}} className="flex flex-1 flex-col" ref={mapElement}>
+                    <div style={{height: '100vh', width: '100%'}} className="flex flex-1 flex-col relative" ref={mapElement}>
                         <div ref={popupElement} className="ol-popup">
                             {selectedLocation && (
                                 <div className="bg-white p-2 rounded shadow">
@@ -289,6 +360,13 @@ function MapLayout() {
                                 </div>
                             )}
                         </div>
+                        <Button
+                            className="absolute bottom-4 right-4 rounded-full p-2 shadow-lg"
+                            onClick={handleCenterOnUser}
+                            variant="secondary"
+                        >
+                            <MapPin className="h-6 w-6" />
+                        </Button>
                     </div>
                 </SidebarInset>
             </SidebarProvider>
