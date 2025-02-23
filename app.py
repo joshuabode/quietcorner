@@ -1,13 +1,15 @@
-from flask import Flask, request, jsonify
-from flask_session import Session 
-from flask_mysqldb import MySQL
 import threading
 import statistics
-import sys
 import time
-from flask_cors import CORS
-from authenticator import Authenticator
+import pickle
 from datetime import timedelta
+
+from flask import Flask, Response, request, jsonify
+from flask_session import Session 
+from flask_mysqldb import MySQL
+from flask_cors import CORS
+
+from authenticator import Authenticator
 
 app = Flask(__name__)
 previous_reports = {}
@@ -27,7 +29,7 @@ CORS(app, supports_credentials=True)
 mysql = MySQL(app)
 
 
-@app.route('/api/report_crowd', methods=['POST'])
+@app.post('/api/report_crowd')
 def report_crowd():
     print("\n\n" + str(active_user_reports) + "\n\n")
     data = request.json
@@ -96,9 +98,7 @@ def report_crowd():
     else:
         return jsonify({"message": "Crowd report discarded, reports are too frequent"}), 400
 
-
-
-@app.route('/api/locations', methods=['GET'])
+@app.get('/api/locations')
 def get_locations():
     cur = mysql.connection.cursor()
     cur.execute('''SELECT building_id, name, longitude, latitude, opening_hours, max_capacity, positions_occupied, has_access_point, facility_1, facility_2, facility_3 FROM building''')
@@ -119,6 +119,22 @@ def get_locations():
         'facility_3': loc[10],
 
     } for loc in locations])
+
+@app.post('/api/upload_calendar')
+def upload_calendar():
+    data = request.json
+    username = data['username']
+    with open(f'flask_ics/{username}.ics', 'wb+') as file:
+        calendar = pickle.dump(data['data'], file)
+    return Response(status=201)
+    
+@app.get('/api/fetch_calendar/<username>')
+def fetch_calendar(username):
+    if not username:
+        return jsonify({'message': 'No username passed'}), 400
+    with open(f'flask_ics/{username}.ics', 'rb') as file:
+        calendar = pickle.load(file)
+    return jsonify({'data': calendar})
 
 @app.get('/api/login')
 def login():

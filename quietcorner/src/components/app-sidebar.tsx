@@ -69,7 +69,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
     const [studyMatches, setStudyMatches] = useState<any[]>([])
-    const [icsFile, setIcsFile] = useState("")
     const [modal, setModal] = useState(false);
     const [data, setData] = useState("");
     const [reportResponse, setReportResponse] = useState<ReportResponse>({message: "", successful: true});
@@ -96,10 +95,6 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         restoreCustomTimeBlocks()
     }, [])
 
-    useEffect(() => {
-        //send icsFile to server for database storage
-    }, [icsFile, date])
-
     const [state, setState] = useState<{
         locations: Location[]
         isLoading: boolean
@@ -110,25 +105,9 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
     // Move the fetch logic outside of render
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const locationsResponse = await fetch("/api/locations")
-                if (!locationsResponse.ok) {
-                    throw new Error("Failed to fetch locations")
-                }
-                const locationsData = await locationsResponse.json()
-
-                setState({
-                    locations: locationsData,
-                    isLoading: false,
-                })
-            } catch (error) {
-                console.error("Error fetching data:", error)
-                setState((prev) => ({ ...prev, isLoading: true }))
-            }
-        }
 
         fetchData()
+        fetchCalendar()
 
         const intervalId = setInterval(fetchData, 2000) // Update every 2 seconds
 
@@ -337,18 +316,72 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
             reader.readAsText(file)
             reader.onloadend = () => {
                 if (typeof reader.result === "string") {
-                    setIcsFile(reader.result)
                     addTimeBlocks(reader.result)
+                    postCalendar(reader.result)
                 }
             }
         }
     }
 
-    const handleLocationClick = (location: Location) => {
-        onLocationSelect(location.name, [location.latitude, location.longitude])
+    const fetchData = async () => {
+        try {
+            const locationsResponse = await fetch("/api/locations")
+            if (!locationsResponse.ok) {
+                throw new Error("Failed to fetch locations")
+            }
+            const locationsData = await locationsResponse.json()
+
+            setState({
+                locations: locationsData,
+                isLoading: false,
+            })
+        } catch (error) {
+            console.error("Error fetching data:", error)
+            setState((prev) => ({ ...prev, isLoading: true }))
+        }
     }
 
+    const fetchCalendar = async () => {
+        const urlParams = new URLSearchParams(window.location.search)
+        try {
+            const calendarResponse = await fetch(`api/fetch_calendar/${urlParams.get('username')}`,{
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            }});
+            let calendarResponseBody = await calendarResponse.json()
+            if (calendarResponse.ok) {
+                addTimeBlocks(calendarResponseBody.data)
+            } else {
+                console.error("Failed to fetch calendar: " + calendarResponseBody.message)
+            }
+        } catch (error) {
+            console.error("Error while fetching calendar data:", error)
+        }
+    }
 
+    const postCalendar = async (calendarData: string) => {
+        console.log(calendarData)
+        const urlParams = new URLSearchParams(window.location.search)
+        try {
+            const response = await fetch("/api/upload_calendar", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    data: calendarData,
+                    username: urlParams.get('username'),
+                }),
+            })
+            if (!response.ok) {
+                let responseBody = await response.json()
+                console.error("Failed to upload calendar: " + responseBody.message)
+            } else {}
+        } catch (error) {
+            console.error("Error submitting crowd report:", error)
+        }
+    }
 
     return (
         <>
@@ -528,7 +561,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 mode="single"
                                                 selected={date}
                                                 onSelect={setDate}
-                                                className="rounded-md border mb-4"
+                                                className="rounded-md border m-auto"
                                             />
                                             <div className="flex-1 overflow-hidden">
                                                 <Label>Timetable for {date?.toDateString()}</Label>
