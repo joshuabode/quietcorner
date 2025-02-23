@@ -16,11 +16,13 @@ import AppSidebar from "@/components/app-sidebar";
 import {
     SidebarInset,
     SidebarProvider,
+    useSidebar
 } from "@/components/ui/sidebar";
 import Overlay from 'ol/Overlay';
 import Geolocation from "ol/Geolocation"
 import { Button } from "@/components/ui/button"
 import { MapPin } from "lucide-react"
+import { getStatusText } from '@/components/CrowdLevelCard';
 
 
 type Location = {
@@ -48,6 +50,9 @@ function MapLayout() {
     const [popup, setPopup] = useState<Overlay | null>(null);
     const [expandedCard, setExpandedCard] = useState<string | null>(null);
     const [geolocation, setGeolocation] = useState<Geolocation | null>(null);
+    const [
+        open,
+        setOpen] = useState(true);
 
 
     useEffect(() => {
@@ -329,19 +334,12 @@ function MapLayout() {
         }
     }
 
-
     if (authenticated) {return (
         <div>
-            <SidebarProvider
-                style={
-                    {
-                        "--sidebar-width": "800px",
-                    } as React.CSSProperties
-                }
-            >
+            <SidebarProvider open={open} defaultOpen={true} onOpenChange={setOpen}>
                 <AppSidebar onLocationSelect={handleLocationSelect} />
                 <SidebarInset>
-                    <div style={{height: '100vh', width: '100%'}} className="flex flex-1 flex-col relative" ref={mapElement}>
+                    <div className="flex-1 flex-row relative w-full" ref={mapElement}>
                         <div ref={popupElement} className="ol-popup">
                             {selectedLocation && (
                                 <div className="bg-white p-2 rounded shadow">
@@ -350,22 +348,26 @@ function MapLayout() {
                                         (() => {
                                             const location = locations.find(l => l.name === selectedLocation);
                                             if (location) {
-                                                if (location.positions_occupied > 500) return 'High';
-                                                if (location.positions_occupied < 200) return 'Low';
-                                                return 'Medium';
+                                                return getStatusText(location.positions_occupied/location.max_capacity);
                                             }
-                                            return 'Unknown';
                                         })()
                                     }</p>
                                 </div>
                             )}
                         </div>
+                        <div className="hidden md:flex absolute bottom-4 left-4 z-10 w-80 h-20 flex-col items-center justify-center rounded-lg border bg-card text-card-foreground shadow-lg">
+                            <div className="relative z-20 h-6 w-64 bg-gradient-to-r from-[#00FF00] via-[#FFFF00] to-[#FF0000] border">
+                                <p className='absolute -left-5'>0</p>
+                                <p className='absolute -right-7'>100</p>
+                            </div>
+                            Occupancy / %
+                        </div>
                         <Button
-                            className="absolute bottom-4 right-4 rounded-full p-2 shadow-lg"
+                            className="absolute bottom-4 size-12 right-4 z-10 bg-card rounded-lg border bg-card text-card-foreground shadow-lg"
                             onClick={handleCenterOnUser}
                             variant="secondary"
                         >
-                            <MapPin className="h-6 w-6" />
+                            <MapPin/>
                         </Button>
                     </div>
                 </SidebarInset>

@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import exp from "constants"
 import { ChevronDown, Clock, Wifi } from "lucide-react"
 
 
@@ -19,7 +20,7 @@ const getStatusBkgd = (positions_occupied: string) => {
     return "bg-green-100"
 }
 
-const getStatusText = (positions_occupied: string) => {
+export const getStatusText = (positions_occupied: string) => {
     const occupancy = Number.parseFloat(positions_occupied)
     if (isNaN(occupancy)) return "null"
     if (occupancy >= 0.7) return "High"
@@ -27,8 +28,7 @@ const getStatusText = (positions_occupied: string) => {
     return "Low"
 }
 
-
-export default function CrowdLevelCard({ location, handleLocationSelect }) {
+export function CrowdLevelCard({ location, handleLocationSelect }) {
 
     return (
         <Collapsible>
@@ -50,7 +50,7 @@ export default function CrowdLevelCard({ location, handleLocationSelect }) {
                                         </div>
                                     </div>
                                     <div className="flex flex-row">
-                                        Occupancy rate: {location.positions_occupied/location.max_capacity *100}%
+                                        Occupancy rate: {(location.positions_occupied/location.max_capacity *100).toFixed(2)}%
                                     </div>
                                  </CardHeader>
                              </CollapsibleTrigger>

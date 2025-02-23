@@ -2,7 +2,7 @@
 
 import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
 import { addMinutes, format, parse, startOfDay } from 'date-fns'
-import { BarChart, Calendar, ChevronDown, ChevronUp, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
+import { BarChart, Calendar, CircleChevronRight, CircleChevronLeft, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
 import { Slider } from "@/components/ui/slider"
 
 
@@ -26,6 +26,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar
 } from '@/components/ui/sidebar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { eventNames } from 'process'
@@ -80,6 +81,16 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const studyEnd = useRef<HTMLInputElement | null>(null)
     const studyTitle = useRef<HTMLInputElement | null>(null)
     const studyLocation = useRef<HTMLSelectElement | null>(null)
+
+    const {
+        sidebarState,
+        open,
+        setOpen,
+        openMobile,
+        setOpenMobile,
+        isMobile,
+        toggleSidebar,
+      } = useSidebar()
 
     useEffect(() => {
         restoreCustomTimeBlocks()
@@ -340,7 +351,14 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
 
     return (
-        <Sidebar className="w-[800px]">
+        <>
+        <div onClick={() => {toggleSidebar()}} className='md:hidden md:h-0 absolute left-5 bottom-5 z-10 bg-white size-12 flex-col flex items-center justify-center rounded-lg border bg-card text-card-foreground shadow-lg'>
+            <CircleChevronRight/>
+        </div>
+        <Sidebar collapsible="icon" className="w-full lg:w-[800px] ">
+            <div onClick={() => {toggleSidebar()}} className='md:hidden md:h-0 absolute right-5 top-5 z-10 bg-white size-12 flex-col flex items-center justify-center rounded-lg border bg-card text-card-foreground shadow-lg'>
+            <CircleChevronLeft/>
+            </div>
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -355,21 +373,21 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 <Tabs defaultValue="crowd-levels" className="w-full h-full">
                     <div className="flex h-full">
                         <TabsList className="flex flex-col h-full space-y-2 bg-muted p-2">
-                            <TabsTrigger value="crowd-levels" className="justify-start">
+                            <TabsTrigger onClick={() => {setOpen(true)}} value="crowd-levels" className="justify-start">
                                 <Users className="mr-3 h-6 w-6" />
-                                <div>Crowd Levels</div>
+                                <div className="hidden sm:block">Crowd Levels</div>
                             </TabsTrigger>
-                            <TabsTrigger value="report" className="justify-start">
+                            <TabsTrigger onClick={() => {setOpen(true)}} value="report" className="justify-start">
                                 <BarChart className="mr-3 h-6 w-6"/>
-                                <div>Report Crowd Level</div>
+                                <div className="hidden sm:block">Report Crowd Level</div>
                             </TabsTrigger>
-                            <TabsTrigger value="schedule" className="justify-start">
+                            <TabsTrigger onClick={() => {setOpen(true)}} value="schedule" className="justify-start">
                                 <Calendar className="mr-3 h-6 w-6"/>
-                                <div>Schedule</div>
+                                <div className="hidden sm:block">Schedule</div>
                             </TabsTrigger>
-                            <TabsTrigger value="study-match" className="justify-start">
+                            <TabsTrigger onClick={() => {setOpen(true)}} value="study-match" className="justify-start">
                                 <BookOpen className="mr-3 h-6 w-6"/>
-                                <div>Study Match</div>
+                                <div className="hidden sm:block">Study Match</div>
                             </TabsTrigger>
                         </TabsList>
                         <div className="flex-1 p-4">
@@ -657,6 +675,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                 </Tabs>
             </SidebarContent>
         </Sidebar>
+        </>
     )
 }
 

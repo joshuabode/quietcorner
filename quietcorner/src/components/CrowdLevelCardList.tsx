@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { SortDropdown } from "./SortDropdown"
 import { FilterDropdown } from "./FilterDropdown"
-import CrowdLevelCard from "./CrowdLevelCard"
+import { CrowdLevelCard } from "./CrowdLevelCard"
 
 type Location = {
     name: string
