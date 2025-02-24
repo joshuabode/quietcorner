@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Filter, X } from "lucide-react"
 
-type OccupancyLevel = "low" | "medium" | "high"
+export type OccupancyLevel = "low" | "medium" | "high"
 
 type FilterDropdownProps = {
     activeFilters: {

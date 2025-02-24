@@ -1,34 +1,39 @@
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import exp from "constants"
 import { ChevronDown, Clock, Wifi } from "lucide-react"
+import { StudyLocation } from "./app-sidebar"
 
 
 
-const getStatusColor = (positions_occupied: string) => {
-    const occupancy = Number.parseFloat(positions_occupied)
+const getStatusColor = (positions_occupied: number) => {
+    const occupancy = positions_occupied
     if (isNaN(occupancy)) return "text-gray-500"
     if (occupancy >= 0.7) return "text-red-500"
     if (occupancy >= 0.4) return "text-orange-500"
     return "text-green-500"
 }
-const getStatusBkgd = (positions_occupied: string) => {
-    const occupancy = Number.parseFloat(positions_occupied)
+const getStatusBkgd = (positions_occupied: number) => {
+    const occupancy = positions_occupied
     if (isNaN(occupancy)) return "bg-gray-100"
     if (occupancy >= 0.7) return "bg-red-100"
     if (occupancy >= 0.4) return "bg-orange-100"
     return "bg-green-100"
 }
 
-export const getStatusText = (positions_occupied: string) => {
-    const occupancy = Number.parseFloat(positions_occupied)
+export const getStatusText = (positions_occupied: number) => {
+    const occupancy = positions_occupied
     if (isNaN(occupancy)) return "null"
     if (occupancy >= 0.7) return "High"
     if (occupancy >= 0.4) return "Medium"
     return "Low"
 }
 
-export function CrowdLevelCard({ location, handleLocationSelect }) {
+type CrowdLevelCardProps = {
+    location: StudyLocation
+    handleLocationSelect: (name: string, coords: [number, number], id: string) => void
+}
+
+export function CrowdLevelCard({ location, handleLocationSelect }: CrowdLevelCardProps) {
 
     return (
         <Collapsible>

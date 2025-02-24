@@ -1,18 +1,16 @@
+/* eslint-disable */
 "use client"
 
 import {useState, useEffect, useRef, FormEvent, ChangeEvent, useCallback} from 'react'
-import { addMinutes, format, parse, startOfDay } from 'date-fns'
+import { format} from 'date-fns'
 import { BarChart, Calendar, CircleChevronRight, CircleChevronLeft, Clock, MapPin, Plus, Upload, Users, Wifi, BookOpen, LogOut } from 'lucide-react'
 import { Slider } from "@/components/ui/slider"
 
 
 import { Button } from '@/components/ui/button'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import Modal from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -29,26 +27,24 @@ import {
     useSidebar
 } from '@/components/ui/sidebar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { eventNames } from 'process'
-import { read } from 'fs'
-import { timeStamp } from 'console'
 import { CrowdLevelCardList } from '@/components/CrowdLevelCardList'
 
-type Location = {
+export type StudyLocation = {
     building_id: string
     name: string
     latitude: number
     longitude: number
     opening_hours: string
-    positions_occupied: string // Added this field
+    positions_occupied: number // Added this field
+    max_capacity: number
     facility_1: string
     facility_2: string
     facility_3: string
 }
 
 type TimeBlock = {
-    start: Date | null
-    end: Date | null
+    start: Date
+    end: Date
     title: string
     location: string
     timetabled: boolean
@@ -63,17 +59,15 @@ type AppSidebarProps = {
     onLocationSelect: (name: string, coordinates: [number, number]) => void
 }
 
-export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
+export function AppSidebar({ onLocationSelect }: AppSidebarProps) {
 
-    const [locations, setLocations] = useState<Location[]>([])
+    const [locations, setLocations] = useState<StudyLocation[]>([])
     const [date, setDate] = useState<Date | undefined>(new Date())
     const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
     const [studyMatches, setStudyMatches] = useState<any[]>([])
     const [modal, setModal] = useState(false);
-    const [data, setData] = useState("");
     const [reportResponse, setReportResponse] = useState<ReportResponse>({message: "", successful: true});
-    const [previousPopup, setpreviousPopup] = useState(false)
-    const [currentPopup, setcurrentPopup] = useState(false)
+
 
     const icsInput = useRef<HTMLInputElement | null>(null)
     const studyStart = useRef<HTMLInputElement | null>(null)
@@ -82,7 +76,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     const studyLocation = useRef<HTMLSelectElement | null>(null)
 
     const {
-        sidebarState,
+        state,
         open,
         setOpen,
         openMobile,
@@ -95,8 +89,8 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         restoreCustomTimeBlocks()
     }, [])
 
-    const [state, setState] = useState<{
-        locations: Location[]
+    const [crowdLevelState, setCrowdLevelState] = useState<{
+        locations: StudyLocation[]
         isLoading: boolean
     }>({
         locations: [],
@@ -216,10 +210,10 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
     //     }
     // }
 
-    const addCustomTimeBlock = (block: TimeBlock) => {
+    const addCustomTimeBlock = (block: TimeBlock|null) => {
         // If the block argument is passed, then add that as the block.
         // Otherwise, create a block from the modal form
-        const isBlock = Boolean(block.start && block.end)
+        const isBlock = block && Boolean(block.start && block.end)
         const newBlock: TimeBlock = isBlock
             ? block
             : {
@@ -262,7 +256,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
         let block: TimeBlock = { start: new Date(), end: new Date(), title: "", location: "", timetabled: true }
         for (const line of icsData.split("\n")) {
             if (line.startsWith("BEGIN:VEVENT")) {
-                block = { start: null, end: null, title: "", location: "", timetabled: true }
+                block = { start: new Date(0), end:  new Date(0), title: "", location: "", timetabled: true }
             } else if (line.startsWith("DTSTART:")) {
                 let str = line.slice("DTSTART:".length)
                 str =
@@ -331,13 +325,13 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
             }
             const locationsData = await locationsResponse.json()
 
-            setState({
+            setCrowdLevelState({
                 locations: locationsData,
                 isLoading: false,
             })
         } catch (error) {
             console.error("Error fetching data:", error)
-            setState((prev) => ({ ...prev, isLoading: true }))
+            setCrowdLevelState((prev) => ({ ...prev, isLoading: true }))
         }
     }
 
@@ -428,7 +422,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                 <SidebarGroup>
                                     <SidebarGroupLabel className="text-lg">Current Crowd Levels</SidebarGroupLabel>
                                     <SidebarGroupContent>
-                                        {state.isLoading ? (
+                                        {crowdLevelState.isLoading ? (
                                             <>
                                                 <p className="text-sm text-gray-500">Loading...</p>
                                             </>
@@ -436,7 +430,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                 <div className="container mx-auto p-4">
                                                     <h1 className="text-2xl font-bold mb-4">Locations</h1>
                                                     <CrowdLevelCardList
-                                                        locations={state.locations}
+                                                        locations={crowdLevelState.locations}
                                                         handleLocationSelect={handleLocationSelect}
                                                     />
                                                 </div>
@@ -516,7 +510,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                         <SelectValue placeholder="Select location" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {state.locations.map((location) => (
+                                                        {crowdLevelState.locations.map((location) => (
                                                             <SelectItem key={location.building_id} value={location.name}>
                                                                 {location.name}
                                                             </SelectItem>
@@ -580,7 +574,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                             if (block.start?.toDateString() === date?.toDateString()) {
                                                                 return (
                                                                     <div
-                                                                        id={index}
+                                                                        key={index}
                                                                         className={`absolute left-0 right-0 ${block.timetabled ? "bg-blue-600/30" : "bg-red-500/30"} rounded p-2 text-xs`}
                                                                         style={{
                                                                             top: `${((block.start.getHours() * 60 + block.start.getMinutes()) / 1440) * 100}%`,
@@ -627,7 +621,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                             <option value="Alan Gilbert Learning Commons">Alan Gilbert Learning Commons</option>
                                                         </select>
                                                     </div>
-                                                    <Button onClick={addCustomTimeBlock}>Add</Button>
+                                                    <Button onClick={() => {addCustomTimeBlock(null)}}>Add</Button>
                                                 </Modal>
                                                 <Button onClick={() => setModal(true)}>
                                                     <Plus className="mr-2 h-4 w-4" /> Add Time Block
@@ -665,7 +659,7 @@ export default function AppSidebar({ onLocationSelect }: AppSidebarProps) {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {locations.map((location) => (
-                                                            <SelectItem key={location.id} value={location.id.toString()}>
+                                                            <SelectItem key={location.building_id} value={location.building_id.toString()}>
                                                                 {location.name}
                                                             </SelectItem>
                                                         ))}

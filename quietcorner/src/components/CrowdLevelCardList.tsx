@@ -4,22 +4,18 @@ import { useState, useMemo } from "react"
 import { SortDropdown } from "./SortDropdown"
 import { FilterDropdown } from "./FilterDropdown"
 import { CrowdLevelCard } from "./CrowdLevelCard"
+import { StudyLocation } from "./app-sidebar"
+import { OccupancyLevel } from "./FilterDropdown"
 
-type Location = {
-    name: string
-    building_id: string
-    positions_occupied: number
-    latitude: number
-    longitude: number
-    opening_hours: string
-    facility_1: string
-    facility_2?: string
-    facility_3?: string
+
+export type CrowdLevelCardListProps = {
+    locations: StudyLocation[]
+    handleLocationSelect: (name: string, coords: [number, number], id: string) => void
 }
 
-type CrowdLevelCardListProps = {
-    locations: Location[]
-    handleLocationSelect: (name: string, coords: [number, number], id: string) => void
+type filter = {
+    occupancy: OccupancyLevel[]
+    buildingName: string
 }
 
 const sortOptions = [
@@ -31,7 +27,7 @@ const sortOptions = [
 
 export function CrowdLevelCardList({ locations, handleLocationSelect }: CrowdLevelCardListProps) {
     const [currentSort, setCurrentSort] = useState("name-asc")
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<filter>({
         occupancy: [],
         buildingName: "",
     })
@@ -66,7 +62,7 @@ export function CrowdLevelCardList({ locations, handleLocationSelect }: CrowdLev
             })
     }, [locations, currentSort, filters])
 
-    const handleFilterChange = (newFilters) => {
+    const handleFilterChange = (newFilters: filter) => {
         setFilters(newFilters)
     }
 

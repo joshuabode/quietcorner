@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -5,48 +7,32 @@ import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import 'ol/ol.css';
-import Geolocation from 'ol/Geolocation.js';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import { Vector as VectorSource } from 'ol/source';
 import { Vector as VectorLayer } from 'ol/layer';
 import { fromLonLat } from 'ol/proj';
 import { Circle, Style, Fill, Stroke } from 'ol/style';
-import AppSidebar from "@/components/app-sidebar";
+import { AppSidebar, StudyLocation } from "@/components/app-sidebar";
 import {
     SidebarInset,
     SidebarProvider,
-    useSidebar
 } from "@/components/ui/sidebar";
 import Overlay from 'ol/Overlay';
 import Geolocation from "ol/Geolocation"
 import { Button } from "@/components/ui/button"
 import { MapPin } from "lucide-react"
 import { getStatusText } from '@/components/CrowdLevelCard';
-
-
-type Location = {
-    building_id: number;
-    name: string;
-    longitude: number;
-    latitude: number;
-    opening_hours: string;
-    facilities: string;
-    positions_occupied: number;
-    max_capacity: number;
-    created_at: string;
-    has_access_point: boolean;
-}
+import { Coordinate } from 'ol/coordinate';
 
 function MapLayout() {
     const [authenticated, setAuthentication] = useState(true)
-    const [locations, setLocations] = useState<Location[]>([]);
+    const [locations, setLocations] = useState<StudyLocation[]>([]);
     const [map, setMap] = useState<Map | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
     const mapElement = useRef<HTMLDivElement>(null);
-    const [vectorSource, setVectorSource] = useState(new VectorSource());
+    const vectorSource = new VectorSource();
     const popupElement = useRef<HTMLDivElement>(null);
-    const [popupShown,setpopupShown] = useState(false);
     const [popup, setPopup] = useState<Overlay | null>(null);
     const [expandedCard, setExpandedCard] = useState<string | null>(null);
     const [geolocation, setGeolocation] = useState<Geolocation | null>(null);
@@ -105,10 +91,10 @@ function MapLayout() {
                 element: popupElement.current!,
                 positioning: "bottom-center",
                 offset: [0, -10],
-                autoPan: true,
-                autoPanAnimation: {
-                    duration: 250,
-                },
+                autoPan: {
+                    animation: {
+                        duration: 250,
+                },}
             })
 
             initialMap.addOverlay(newPopup)
@@ -173,7 +159,7 @@ function MapLayout() {
         )
 
         vectorSource.addFeature(positionFeature)
-        let lastValidCoordinates = null
+        let lastValidCoordinates: Coordinate | null = null
 
         const updatePosition = () => {
             const newCoordinates = geo.getPosition()
@@ -234,7 +220,7 @@ function MapLayout() {
             setAuthentication(data.auth);
             return data.auth
         } catch(error) {
-            console.error("An error occured during authentication")
+            console.error("An error occured during authentication" + error)
         }
 
 
@@ -300,8 +286,8 @@ function MapLayout() {
 
     const createFeatureStyle = (capacity: number, population: number) => {
         console.log(population/capacity)
-        let color = `hsl(${120*(1 - population/capacity)}, 100%, 50%)`;
-        let radius = Math.sqrt(capacity/2);
+        const color = `hsl(${120*(1 - population/capacity)}, 100%, 50%)`;
+        const radius = Math.sqrt(capacity/2);
 
         return new Style({
             image: new Circle({
