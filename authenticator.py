@@ -10,8 +10,9 @@ from flask import session, redirect, Response
 from flask_session import Session # Change to ... import SqlAlchemySessionInterface later
 
 AUTHENTICATION_SERVICE_URL = 'http://studentnet.cs.manchester.ac.uk/authenticate/'
-DEVELOPER_URL = 'http://localhost:5000/login'
+DEVELOPER_URL = 'http://localhost:3000/main'
 AUTHENTICATION_LOGOUT_URL = 'http://studentnet.cs.manchester.ac.uk/systemlogout.php'
+APP_HOME_URL = 'http://localhost:3000/main/'
 
 # Ignore SSL errors when using the API
 ctx = ssl.create_default_context()
@@ -19,21 +20,21 @@ ctx.check_hostname = False
 ctx.verify_mode = ssl.CERT_NONE
 
 class Authenticator:
-    def __init__(self, request) -> None:
-        self.request = request
+    def __init__(self, request_args) -> None:
+        self.request = request_args
 
-    def validate_user(self) -> Response:
+    def validate_user(self) -> dict:
         if self.is_authenticated():
-            return redirect("/home")
+            return {'auth': True, 'url': APP_HOME_URL}
         elif not session.get('csticket') or not self.request.get('csticket'):
             return self.send_for_authentication()
         elif self.request.get('csticket') != session.get('csticket'):
             return self.send_for_authentication()
         elif self.is_get_parameters_matching_server_authentication():
             self.record_authenticated_user()
-            return redirect('/login')
+            return {'auth': False, 'url': DEVELOPER_URL}
         else:
-            return redirect("/home")
+            return {'auth': True, 'url': APP_HOME_URL}
 
     def is_authenticated(self) -> bool:
         auth_timestamp = self.get_time_authenticated()
@@ -46,7 +47,7 @@ class Authenticator:
         csticket = hex(time_ns())
         session["csticket"] = csticket
         url = self.get_authentication_url("validate")
-        return redirect(url)
+        return {'auth': False, 'url': url}
     
     def get_authentication_url(self, command) -> str:
         csticket = session.get('csticket')
@@ -64,21 +65,20 @@ class Authenticator:
         url = self.get_authentication_url('confirm')
         url += '&username=' + quote_plus(quote(self.request.get('username')))
         url += '&fullname=' + quote_plus(quote(self.request.get('fullname')))
-        print(url)
         if urlopen(url, context=ctx).read() != 'true':
             self.fail_authentication()
             return False
         else:
             return True
         
-    def fail_authentication(self) -> Response:
-        return redirect('/no-auth')
+    def fail_authentication(self) -> dict:
+        return {'auth': False, 'url': APP_HOME_URL + '/failed-auth'}
     
     def get_time_authenticated(self) -> int:
         if session.get('authenticated'):
             return session.get('authenticated')
         return None
     
-    def invalidate_user(self) -> Response:
+    def invalidate_user(self) -> dict:
         session.clear()
-        return redirect(AUTHENTICATION_LOGOUT_URL)
+        return {'auth': False, 'url': AUTHENTICATION_LOGOUT_URL}
