@@ -132,8 +132,11 @@ def upload_calendar():
 def fetch_calendar(username):
     if not username:
         return jsonify({'message': 'No username passed'}), 400
-    with open(f'flask_ics/{username}.ics', 'rb') as file:
-        calendar = pickle.load(file)
+    try:
+        with open(f'flask_ics/{username}.ics', 'rb') as file:
+            calendar = pickle.load(file)
+    except FileNotFoundError:
+        return jsonify({'message': "No calendar data"}), 400
     return jsonify({'data': calendar})
 
 @app.get('/api/login')
